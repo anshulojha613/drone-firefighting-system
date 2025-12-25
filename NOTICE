@@ -1,0 +1,9 @@
+Fire-Fighting Drone Project
+Copyright 2025 Anshul Ojha
+Email: anshulojha2018@gmail.com
+
+Third-party components:
+- DroneKit Python (Apache 2.0 License)
+- OpenCV (Apache 2.0 License)
+- MLX90640 Driver (BSD License)
+- Adafruit CircuitPython libraries (MIT License)

@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Database
+*.db
+*.db-journal
+
+# Logs
+*.log
+logs/*.log
+
+# Data outputs (keep structure, ignore content)
+data/*/
+
+# Jupyter
+.ipynb_checkpoints
+
+# ML Models 
+# keeping in github, as its a light weight < 50MB model to get started. 
+# If training data set grows, please exclude or keep it in large onlien filestore system
+# models/
+
+# ML Training Data
+ml_training_data/
+
+
+# Environment
+.env
+.env.local
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db

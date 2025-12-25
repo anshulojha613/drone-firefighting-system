@@ -1,0 +1,137 @@
+dashboard:
+  debug: false
+  host: 0.0.0.0
+  map:
+    default_center:
+    - 33.2265
+    - -96.8265
+    default_zoom: 15
+    tile_layer: OpenStreetMap
+  port: 8050
+  update_interval_ms: 1000
+data_collection:
+  environment_interval_sec: 1
+  formats:
+    environment: csv
+    gps: csv
+    thermal: both
+  gps_interval_sec: 1
+  storage:
+    auto_archive: true
+    base_dir: data
+    retention_days: 30
+  thermal_interval_sec: 1
+database:
+  echo: false
+  path: database/dfs.db
+  pool_size: 10
+  type: sqlite
+drone_control:
+  demo:
+    battery_drain_rate: 0.1
+    firefighter_delay_sec: 0.3
+    gps_noise_meters: 0.5
+    scouter_delay_sec: 0.5
+    simulate_delays: true
+  hardware:
+    baud: 57600
+    connection_string: /dev/ttyAMA0
+    heartbeat_interval_sec: 1
+    timeout_sec: 30
+  mode: demo
+drone_pool:
+  firefighter_drones:
+    battery_capacity_mah: 8000
+    count: 3
+    cruise_altitude_m: 12.0
+    cruise_speed_ms: 4.0
+    max_flight_time_min: 15
+    payload_capacity_kg: 5.0
+    prefix: FD
+  scouter_drones:
+    battery_capacity_mah: 5000
+    count: 5
+    cruise_altitude_m: 15.24
+    cruise_speed_ms: 5.0
+    max_flight_time_min: 20
+    prefix: SD
+fire_detection:
+  alerts:
+    immediate_dispatch: true
+    min_confidence: 0.7
+  image_recognition:
+    confidence_threshold: 0.7
+    input_size:
+    - 224
+    - 224
+    model_path: models/fire_detector.tflite
+    simulation_objects:
+    - fire
+    - smoke
+  thermal:
+    hotspot_threshold_c: 50.0
+    min_confidence: 0.7
+    min_hotspot_pixels: 3
+  validation:
+    min_combined_confidence: 0.6
+    require_visual_confirmation: true
+hardware:
+  camera:
+    capture_interval: 5
+    resolution:
+    - 1920
+    - 1080
+    rotation: 0
+    video_duration: 10
+logging:
+  backup_count: 5
+  file: logs/dfs.log
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  level: INFO
+  max_bytes: 10485760
+mission_planning:
+  assignment:
+    min_battery_percent: 30
+    reserve_drones: 1
+    strategy: round_robin
+  execution:
+    delay_between_missions_sec: 2
+    mode: sequential
+    parallel_max_workers: 3
+    task_dispatch_delay_sec: 0.5
+  task_generation:
+    area_size_m:
+    - 200
+    - 300
+    overlap_percent: 30
+    priority_levels:
+    - high
+    - medium
+    - low
+  task_states:
+  - created
+  - assigned
+  - executing
+  - completed
+  - failed
+  - archived
+  - deleted
+network:
+  backup:
+    ip: 10.3.141.1
+    port: 5000
+    ssid: raspAP
+    subnet: 255.255.255.0
+  heartbeat_interval_sec: 5
+  primary:
+    ip: 10.10.8.1
+    port: 5000
+    ssid: FireDrone-GS
+    subnet: 255.255.255.0
+  protocol: http
+  timeout_sec: 30
+system:
+  ground_station_id: GS-001
+  location: Forest Ground Control
+  name: Drone Firefighting System
+  version: 1.0.0

@@ -1,0 +1,102 @@
+# Mission Areas Configuration
+# Define multiple flight areas for batch mission execution
+# DFS will automatically assign drones and execute missions in sequence
+
+mission_areas:
+  # Area 1: North Sector
+  # 33.230406, -96.831761 c| 33.232093, -96.826547 b| 33.229742, -96.824787 a| 33.226763, -96.827280 d
+  #
+
+  
+  - name: "North Sector Alpha"
+    priority: high  # Options: low, medium, high, critical
+    corners:
+      corner_a:
+        latitude: 33.2271901
+        longitude: -96.8252657
+      corner_b:
+        latitude: 33.2272414
+        longitude: -96.8279586
+      corner_c:
+        latitude: 33.2258722
+        longitude: -96.8279840
+      corner_d:
+        latitude: 33.2257764
+        longitude: -96.8252980
+  
+  # Area 2: East Sector
+  - name: "East Sector Bravo"
+    priority: high
+    corners:
+      corner_a:
+        latitude: 33.2280000
+        longitude: -96.8240000
+      corner_b:
+        latitude: 33.2280500
+        longitude: -96.8265000
+      corner_c:
+        latitude: 33.2268000
+        longitude: -96.8265500
+      corner_d:
+        latitude: 33.2267500
+        longitude: -96.8240500
+  
+  # Area 3: South Sector
+  - name: "South Sector Charlie"
+    priority: medium
+    corners:
+      corner_a:
+        latitude: 33.2250000
+        longitude: -96.8255000
+      corner_b:
+        latitude: 33.2250500
+        longitude: -96.8280000
+      corner_c:
+        latitude: 33.2238000
+        longitude: -96.8280500
+      corner_d:
+        latitude: 33.2237500
+        longitude: -96.8255500
+  
+  # Area 4: West Sector
+  - name: "West Sector Delta"
+    priority: medium
+    corners:
+      corner_a:
+        latitude: 33.2265000
+        longitude: -96.8290000
+      corner_b:
+        latitude: 33.2265500
+        longitude: -96.8315000
+      corner_c:
+        latitude: 33.2253000
+        longitude: -96.8315500
+      corner_d:
+        latitude: 33.2252500
+        longitude: -96.8290500
+  
+  # Area 5: Central Sector
+  - name: "Central Sector Echo"
+    priority: critical
+    corners:
+      corner_a:
+        latitude: 33.2260000
+        longitude: -96.8260000
+      corner_b:
+        latitude: 33.2260500
+        longitude: -96.8275000
+      corner_c:
+        latitude: 33.2252000
+        longitude: -96.8275500
+      corner_d:
+        latitude: 33.2251500
+        longitude: -96.8260500
+
+# Mission execution settings
+execution:
+  mode: sequential  # Options: sequential, parallel
+  parallel_max_workers: 3  # Max concurrent missions (parallel mode only)
+  task_dispatch_delay_sec: 0.5  # Delay between task dispatches (parallel mode)
+  delay_between_missions_sec: 2  # Delay between missions (sequential mode)
+  stop_on_error: false  # Continue even if one mission fails
+  auto_dispatch_firefighters: true  # Auto-dispatch FD drones on fire detection

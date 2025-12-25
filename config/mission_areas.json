@@ -1,0 +1,75 @@
+{
+  "mission_areas": [
+    {
+      "name": "North Sector Alpha",
+      "priority": "high",
+      "corners": {
+        "corner_a": {
+          "latitude": 33.2271901,
+          "longitude": -96.8252657
+        },
+        "corner_b": {
+          "latitude": 33.2272414,
+          "longitude": -96.8279586
+        },
+        "corner_c": {
+          "latitude": 33.2258722,
+          "longitude": -96.8279840
+        },
+        "corner_d": {
+          "latitude": 33.2257764,
+          "longitude": -96.8252980
+        }
+      }
+    },
+    {
+      "name": "East Sector Bravo",
+      "priority": "high",
+      "corners": {
+        "corner_a": {
+          "latitude": 33.2280000,
+          "longitude": -96.8240000
+        },
+        "corner_b": {
+          "latitude": 33.2280500,
+          "longitude": -96.8265000
+        },
+        "corner_c": {
+          "latitude": 33.2268000,
+          "longitude": -96.8265500
+        },
+        "corner_d": {
+          "latitude": 33.2267500,
+          "longitude": -96.8240500
+        }
+      }
+    },
+    {
+      "name": "South Sector Charlie",
+      "priority": "medium",
+      "corners": {
+        "corner_a": {
+          "latitude": 33.2250000,
+          "longitude": -96.8255000
+        },
+        "corner_b": {
+          "latitude": 33.2250500,
+          "longitude": -96.8280000
+        },
+        "corner_c": {
+          "latitude": 33.2238000,
+          "longitude": -96.8280500
+        },
+        "corner_d": {
+          "latitude": 33.2237500,
+          "longitude": -96.8255500
+        }
+      }
+    }
+  ],
+  "execution": {
+    "delay_between_missions_sec": 2,
+    "stop_on_error": false,
+    "auto_dispatch_firefighters": true
+  }
+}
