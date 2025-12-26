@@ -5,7 +5,6 @@
 **December 2025**
 
 
-
 ## Why I Built This
 
 Living in Texas, I've watched brush fires get out of control way too fast, especially during dry winters. 
@@ -150,32 +149,26 @@ Can't exactly start real fires in a public field. Heated gravel in my oven to 18
 
 - ### The DroneKit Python 3.13 Disaster
     Upgraded to Python 3.13 and DroneKit immediately broke. Error: `collections.MutableMapping` doesn't exist anymore (moved in Python 3.11+). Spent half a day debugging before writing a patch script (`fix_dronekit_py313.py`) to fix it automatically.
-
 - **Solution:** Monkey-patch the library on import. Not pretty, but works.
 
 - ### WiFi Range Was Terrible
     Pi's built-in WiFi? Maybe 50-100 feet on a good day. Tried the ALFA AWUS036ACH (everyone recommends it) but it weighs 250 grams - too heavy for my frame.
-
 - **Solution:** Found TP-Link AC600 adapters. much lighter, 200+ foot range. Game changer.
 
 - ### Cold Weather Battery Death
     Texas winters aren't that cold (35-45°F) but LiPo batteries HATE it. Lost 30% capacity just from temperature. Flight time dropped from 15 min to 10 min.
-
 - **Solution:** Keep batteries inside my jacket until flight time. Also learned to set voltage alarm higher (3.8V vs 3.7V per cell).
 
 - ### GPS Drift Is Annoying
     Even with 12+ satellites, GPS position bounces around ±2 feet constantly. Makes it hard to return to exact locations for repeat measurements.
-
 - **Solution:** Average position over 10 readings. Also added GPS smoothing in post-processing.
 
 - ### MLX90640 Quirks
     Thermal camera randomly glitches if you read too fast. Needs minimum 2 seconds between frames or data gets corrupted.
-
 - **Solution:** Set refresh rate to 8Hz max. Also added error handling to skip bad frames.
 
 - ### Wind Is The Enemy
     Can't fly in winds over 15 mph with my setup. Drone becomes unstable and thermal footage is unusable (too much vibration).
-
 - **Solution:** Check weather forecast. Only fly on calm days. Lost several weekends to this.
 
 ## Key Challenges and Learnings
@@ -223,7 +216,6 @@ Can't exactly start real fires in a public field. Heated gravel in my oven to 18
 4. **Advance Design** I have a conceptual model and draft built of a CAD model how a Un Manned Ground Station POD will look like in remote region where a Truck Trailer will place it and it has all the necessary components open, expand, charge and unlesh SD and FD drones and do the whole operation with remote management from centralized unit somewhere from the city.
 
 
-
 ## Resources I Used
 
 - **DroneKit Documentation:** For MAVLink protocol. https://dronekit-python.readthedocs.io/en/latest/guide/mavlink_messages.html
@@ -248,11 +240,6 @@ For Simulation, I had to generate data related GPS Noise Simulation, Winddrift E
 |Atmospheric Pressure|Hydrostatic pressure gradient (~12 Pa/m)|
 |Coordinate Transformations|Standard geodetic and rotation matrix mathematics|
 |Flight Dynamics|Basic kinematics (distance = speed × time)|
-
-
-- **Blender:** For 3D modeling and animation. https://www.blender.org/
-- **Blender Python API:** For automation and scripting. https://docs.blender.org/api/current/
-
 
 ## Acknowledgments
 
@@ -281,4 +268,4 @@ GitHub: [@anshulojha613](https://github.com/anshulojha613)
 
 **December 2025**
 
-*This project spanned over two qtrs with most of build and testing in Oct, Nov, Dec 2025. It represents if you put your mind and passion, you can build amazing thing. It's not perfect, but it's mine.*
+*This project spanned over two qtrs in 2025 with most of the final build and testing in Oct, Nov, Dec 2025. It represents if you put your mind and passion, you can build something amazing. It's not perfect but its my own which I am proud of. Would love to get your comments when you try out.*
