@@ -38,7 +38,7 @@ drone_control:
     connection_string: /dev/ttyAMA0
     heartbeat_interval_sec: 1
     timeout_sec: 30
-  mode: demo
+  mode: hardware
 drone_pool:
   firefighter_drones:
     battery_capacity_mah: 8000
@@ -55,6 +55,31 @@ drone_pool:
     cruise_speed_ms: 5.0
     max_flight_time_min: 20
     prefix: SD
+  drone_registry:
+    SD-001:
+      ip: 10.10.8.1
+      port: 5001
+#    SD-002:
+#      ip: 10.10.8.102
+#      port: 5000
+#    SD-003:
+#      ip: 10.10.8.103
+#      port: 5000
+#    SD-004:
+#      ip: 10.10.8.104
+#      port: 5000
+#    SD-005:
+#      ip: 10.10.8.105
+#      port: 5000
+    FD-001:
+      ip: 10.10.8.111
+      port: 5000
+#    FD-002:
+#      ip: 10.10.8.112
+#      port: 5000
+#    FD-003:
+      ip: 10.10.8.113
+      port: 5000
 fire_detection:
   alerts:
     immediate_dispatch: true

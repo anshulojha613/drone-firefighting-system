@@ -3,8 +3,8 @@
 
 # Configuration
 PI_USER="anshul"
-PI_HOST="192.168.7.195"  # Raspi IP using JaaK SSID
-# PI_HOST="10.10.8.1"  # Raspi IP using FireDrone-GS SSID
+#PI_HOST="192.168.7.195"  # Raspi IP using JaaK SSID
+PI_HOST="10.10.8.1"  # Raspi IP using FireDrone-GS SSID
 
 PI_DIR="/home/anshul/drone-firefighting-system"
 DRONE_ID="SD-001"
@@ -52,20 +52,52 @@ ssh $PI_USER@$PI_HOST "mkdir -p $PI_DIR"
 echo -e "${GREEN}✓ Directory created${NC}"
 echo ""
 
-# Copy files
-echo "Copying files to Raspberry Pi..."
-rsync -avz --exclude 'venv' \
-           --exclude '__pycache__' \
-           --exclude '*.pyc' \
-           --exclude '.git' \
-           --exclude 'data' \
-           --exclude 'database/dfs.db' \
-           ./ $PI_USER@$PI_HOST:$PI_DIR/
+# Copy files (incremental - only changed files)
+echo "Syncing files to Raspberry Pi (incremental)..."
+echo "Excluding: venv, __pycache__, .git, data, models, ML files, database"
+echo ""
+
+rsync -avz \
+    --checksum \
+    --update \
+    --progress \
+    --exclude 'venv/' \
+    --exclude '__pycache__/' \
+    --exclude '*.pyc' \
+    --exclude '*.pyo' \
+    --exclude '.git/' \
+    --exclude '.gitignore' \
+    --exclude 'data/' \
+    --exclude 'database/dfs.db' \
+    --exclude 'database/dfs.db-journal' \
+    --exclude 'models/' \
+    --exclude 'ml_training/' \
+    --exclude '*.h5' \
+    --exclude '*.tflite' \
+    --exclude '*.keras' \
+    --exclude '*.pt' \
+    --exclude '*.pth' \
+    --exclude '*.onnx' \
+    --exclude 'logs/*.log' \
+    --exclude '.DS_Store' \
+    --exclude '*.swp' \
+    --exclude '*.swo' \
+    --exclude '.vscode/' \
+    --exclude '.idea/' \
+    --include '*.py' \
+    --include '*.yaml' \
+    --include '*.yml' \
+    --include '*.txt' \
+    --include '*.md' \
+    --include '*.sh' \
+    --include '*.json' \
+    ./ $PI_USER@$PI_HOST:$PI_DIR/
 
 if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✓ Files copied${NC}"
+    echo ""
+    echo -e "${GREEN}✓ Files synced (only changed files copied)${NC}"
 else
-    echo -e "${RED}Error: File copy failed${NC}"
+    echo -e "${RED}Error: File sync failed${NC}"
     exit 1
 fi
 echo ""

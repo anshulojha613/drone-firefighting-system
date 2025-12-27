@@ -17,6 +17,7 @@ from scouter_drone.simulator import ScouterDroneSimulator
 from firefighter_drone.simulator import FirefighterDroneSimulator
 from ml_training.fire_detector import FireDetector
 from network.communication import NetworkCommunication
+from network.ground_station_client import GroundStationClient
 from utils.logger import get_logger, setup_logging
 
 logger = get_logger()
@@ -69,12 +70,17 @@ def initialize_system(config_path='config/dfs_config.yaml'):
     return orchestrator, network, fire_detector, config
 
 
-def run_demo_mission(orchestrator, fire_detector, config):
+def run_demo_mission(orchestrator, fire_detector, config, mode_override=None, use_network=False, target_drone_id=None):
     """
     Demo mission for testing without hardware
 
     Creates a scout task, assigns drone, simulates flight, detects fires.
     Uses real GPS coordinates from my test field in Prosper, TX.
+    
+    Args:
+        mode_override: If provided, overrides drone_control.mode from config
+        use_network: If True, sends mission to drone over network (ground station mode)
+        target_drone_id: If provided, uses this specific drone instead of auto-assignment
     """
     logger.info("\n" + "="*70)
     logger.info(" RUNNING DEMONSTRATION MISSION")
@@ -96,14 +102,54 @@ def run_demo_mission(orchestrator, fire_detector, config):
     task_config = task
     
     # Find available drone
-    print("\n[SYNC] Assigning task to available drone...")
-    drone = orchestrator.assign_task_to_drone(task_id)
-    
-    if not drone:
-        print("[FAIL] No available drones!")
-        return
-    
-    drone_id = drone['drone_id']
+    if target_drone_id:
+        # Use specified drone
+        print(f"\n[SYNC] Using specified drone: {target_drone_id}...")
+        drone_id = target_drone_id
+        
+        # Manually assign task to specified drone using session
+        from database import Drone, Task, DroneState, TaskState
+        session = orchestrator.db_manager.get_session()
+        
+        try:
+            drone = session.query(Drone).filter_by(drone_id=drone_id).first()
+            
+            if not drone:
+                all_drones = session.query(Drone).all()
+                print(f"[ERROR] Drone {drone_id} not found in database")
+                print(f"   Available drones: {[d.drone_id for d in all_drones]}")
+                return
+            
+            if drone.state != DroneState.IDLE:
+                print(f"[WARN] Drone {drone_id} is {drone.state.value}, forcing assignment anyway...")
+            
+            # Force assignment
+            drone.state = DroneState.ASSIGNED
+            task_obj = session.query(Task).filter_by(task_id=task_id).first()
+            if task_obj:
+                task_obj.state = TaskState.ASSIGNED
+                task_obj.assigned_drone_id = drone_id
+                task_obj.assigned_at = datetime.now()
+            
+            session.commit()
+            print(f"[OK] Task {task_id} assigned to {drone_id}")
+            
+        except Exception as e:
+            session.rollback()
+            print(f"[ERROR] Failed to assign task: {e}")
+            return
+        finally:
+            orchestrator.db_manager.close_session(session)
+    else:
+        # Auto-assign to available drone
+        print("\n[SYNC] Assigning task to available drone...")
+        drone = orchestrator.assign_task_to_drone(task_id)
+        
+        if not drone:
+            print("[FAIL] No available drones!")
+            return
+        
+        drone_id = drone['drone_id']
     
     # Start mission
     print(f"\n Starting mission execution with {drone_id}...")
@@ -114,8 +160,87 @@ def run_demo_mission(orchestrator, fire_detector, config):
     print(f"SCOUTER DRONE MISSION - {drone_id}")
     print(f"{'='*70}")
     
-    sd_simulator = ScouterDroneSimulator(task_config, drone_id)
-    hotspots_detected, data_path = sd_simulator.execute_mission()
+    if use_network:
+        # Network mode: Send mission to drone over WiFi
+        print(f"\n[COMM] Network mode: Sending mission to {drone_id} over WiFi...")
+        
+        # Create ground station client
+        gs_client = GroundStationClient(config)
+        
+        # Register drone from config
+        drone_registry = config.get('drone_pool', {}).get('drone_registry', {})
+        if drone_id not in drone_registry:
+            print(f"[ERROR] Drone {drone_id} not found in drone_registry config")
+            print(f"   Available drones: {list(drone_registry.keys())}")
+            return
+        
+        drone_info = drone_registry[drone_id]
+        gs_client.register_drone(drone_id, drone_info['ip'], drone_info['port'])
+        
+        # Test connection
+        if not gs_client.test_connection(drone_id):
+            print(f"[ERROR] Cannot connect to {drone_id} at {drone_info['ip']}:{drone_info['port']}")
+            print(f"   Make sure drone agent is running on the Pi")
+            print(f"   Run on Pi: python -m network.drone_agent --drone-id {drone_id}")
+            return
+        
+        # Assign mission
+        if not gs_client.assign_mission(drone_id, task_id, task_config):
+            print(f"[ERROR] Failed to assign mission to {drone_id}")
+            return
+        
+        # Start mission execution
+        if not gs_client.start_mission(drone_id):
+            print(f"[ERROR] Failed to start mission on {drone_id}")
+            return
+        
+        print(f"\n[OK] Mission sent to {drone_id} - executing on drone...")
+        print(f"   Monitor status: http://{drone_info['ip']}:{drone_info['port']}/api/status")
+        
+        print("[WAIT] Waiting for mission completion...")
+        print("[TIP] Press Ctrl+C to abort mission and RTL")
+        
+        try:
+            while True:
+                status = gs_client.get_drone_status(drone_id)
+                if status and status.get('state') in ['IDLE', 'RTL', 'COMPLETED']:
+                    print(f"\n[OK] Mission complete - State: {status.get('state')}")
+                    break
+                
+                print(f"   Status: {status.get('state') if status else 'UNKNOWN'}")
+                time.sleep(1)
+        
+        except KeyboardInterrupt:
+            print("\n\n[WARN] ⚠️  Mission abort requested by user")
+            print("[ABORT] Sending abort command to drone...")
+            
+            try:
+                # Send abort command to drone
+                import requests
+                response = requests.post(
+                    f"http://{drone_info['ip']}:{drone_info['port']}/api/mission/abort",
+                    timeout=5
+                )
+                
+                if response.status_code == 200:
+                    print("[OK] Abort command sent - drone returning to launch")
+                    print("[OK] Mission aborted safely")
+                else:
+                    print(f"[ERROR] Abort command failed: {response.status_code}")
+            
+            except Exception as e:
+                print(f"[ERROR] Failed to send abort command: {e}")
+                print("[WARN] Drone may still be executing mission!")
+            
+            return
+        
+        # For network mode, we don't have local data
+        hotspots_detected = 0
+        data_path = None
+    else:
+        # Local mode: Run simulator locally (demo or hardware)
+        sd_simulator = ScouterDroneSimulator(task_config, drone_id, mode_override=mode_override)
+        hotspots_detected, data_path = sd_simulator.execute_mission()
     
     # Process any fires found
     if hotspots_detected > 0:
@@ -183,6 +308,8 @@ def main():
     parser = argparse.ArgumentParser(description='Drone Firefighting System')
     parser.add_argument('--config', default='config/dfs_config.yaml', help='Configuration file path')
     parser.add_argument('--demo', action='store_true', help='Run demonstration mission')
+    parser.add_argument('--network', action='store_true', help='Use network mode (ground station sends missions to drones over WiFi)')
+    parser.add_argument('--drone-id', type=str, help='Specify drone ID to use (e.g., SD-001)')
     parser.add_argument('--dashboard', action='store_true', help='Launch dashboard only')
     parser.add_argument('--quiet', action='store_true', help='Suppress dashboard server logs')
     parser.add_argument('--log-level', default='INFO', 
@@ -212,12 +339,26 @@ def main():
     
     elif args.demo:
         # Run demo mission
-        run_demo_mission(orchestrator, fire_detector, config)
+        if args.network:
+            # Network mode: Ground station sends mission to drone over WiFi
+            print("\n[COMM] Running in NETWORK mode (Ground Station -> WiFi -> Drone)")
+            if args.drone_id:
+                print(f"[TARGET] Target drone: {args.drone_id}")
+            run_demo_mission(orchestrator, fire_detector, config, mode_override=None, use_network=True, target_drone_id=args.drone_id)
+        else:
+            # Local mode: Force demo controller for local simulation
+            print("\n[LOCAL] Running in LOCAL DEMO mode (simulated flight)")
+            if args.drone_id:
+                print(f"[TARGET] Target drone: {args.drone_id}")
+            run_demo_mission(orchestrator, fire_detector, config, mode_override='demo', use_network=False, target_drone_id=args.drone_id)
     
     else:
         print("\n[TIP] Usage:")
-        print("   python main.py --demo          # Run demonstration mission")
-        print("   python main.py --dashboard     # Launch dashboard")
+        print("   python main.py --demo                           # Run local demo mission (simulated)")
+        print("   python main.py --demo --network --drone-id SD-001  # Run network mission to specific drone")
+        print("   python main.py --dashboard                      # Launch dashboard")
+        print("\n   For network mode, first start drone agent on Pi:")
+        print("   python -m network.drone_agent --drone-id SD-001")
         print("\n   For full operation, run both in separate terminals")
 
 

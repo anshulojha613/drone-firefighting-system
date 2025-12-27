@@ -154,18 +154,74 @@ class DroneAgent:
         
         @self.app.route('/api/rtl', methods=['POST'])
         def return_to_launch():
-            """Return to launch"""
+            """Return to launch (safe return home)"""
             try:
-                print(f"\n[HOME] RTL command received")
+                print(f"\n[HOME] RTL command received - returning to launch")
                 
                 self.state = "RTL"
                 
                 if self.controller.is_connected():
-                    self.controller.emergency_stop()
+                    # Use return_to_launch if available, otherwise emergency_stop
+                    if hasattr(self.controller, 'return_to_launch'):
+                        self.controller.return_to_launch()
+                    else:
+                        self.controller.emergency_stop()
                 
                 return jsonify({
                     'success': True,
                     'message': 'RTL initiated'
+                })
+            
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'error': str(e)
+                }), 500
+        
+        @self.app.route('/api/land', methods=['POST'])
+        def land():
+            """Emergency land at current position"""
+            try:
+                print(f"\n[LAND] Emergency land command received")
+                
+                self.state = "LANDING"
+                
+                if self.controller.is_connected():
+                    # Use land if available, otherwise emergency_stop
+                    if hasattr(self.controller, 'land'):
+                        self.controller.land()
+                    else:
+                        self.controller.emergency_stop()
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Emergency landing initiated'
+                })
+            
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'error': str(e)
+                }), 500
+        
+        @self.app.route('/api/kill', methods=['POST'])
+        def kill():
+            """KILL SWITCH - Immediate motor stop (DANGEROUS - drone will fall!)"""
+            try:
+                print(f"\n[KILL] KILL SWITCH ACTIVATED - MOTORS STOPPING")
+                
+                self.state = "KILLED"
+                
+                if self.controller.is_connected():
+                    # Disarm motors immediately
+                    if hasattr(self.controller, 'disarm'):
+                        self.controller.disarm()
+                    else:
+                        self.controller.emergency_stop()
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'KILL SWITCH ACTIVATED - Motors stopped'
                 })
             
             except Exception as e:

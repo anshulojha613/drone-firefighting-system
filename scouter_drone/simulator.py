@@ -38,11 +38,12 @@ class ScouterDroneSimulator:
     TODO: Simulate battery drain based on flight distance
     TODO: Add camera gimbal simulation for better thermal coverage
     """
-    def __init__(self, task_config: Dict, drone_id: str, output_base_dir: str = 'data', config_path: str = 'config/dfs_config.yaml'):
+    def __init__(self, task_config: Dict, drone_id: str, output_base_dir: str = 'data', config_path: str = 'config/dfs_config.yaml', mode_override: str = None):
         self.task_config = task_config
         self.drone_id = drone_id
         self.output_base_dir = output_base_dir
         self.config_path = config_path
+        self.mode_override = mode_override
         
         # Load config for simulation delays
         self.delay_sec = 0.5  # Default
@@ -79,7 +80,7 @@ class ScouterDroneSimulator:
         self.env_gen = EnvironmentGenerator(self.config_file)
         
         # Initialize drone controller (demo or hardware based on config)
-        self.controller = ControllerFactory.create_controller(self.drone_id, self.config_path)
+        self.controller = ControllerFactory.create_controller(self.drone_id, self.config_path, mode_override=self.mode_override)
         
         # Hotspot detections
         self.hotspots_detected = []

@@ -5,6 +5,8 @@ Real hardware controller using MAVLink/DroneKit for Pixhawk flight controllers
 
 from .base_controller import DroneControllerBase, FlightMode
 from typing import List, Dict, Tuple
+import os
+import glob
 import time
 
 # Try to import dronekit - it's optional for demo mode
@@ -37,6 +39,34 @@ class PixhawkController(DroneControllerBase):
         """Connect to Pixhawk via MAVLink"""
         try:
             print(f"[HARDWARE] {self.drone_id}: Connecting to Pixhawk at {self.connection_string}...")
+
+            if (
+                isinstance(self.connection_string, str)
+                and self.connection_string.startswith("/dev/")
+                and not os.path.exists(self.connection_string)
+            ):
+                candidates = []
+                for pattern in (
+                    "/dev/serial*",
+                    "/dev/ttyAMA*",
+                    "/dev/ttyACM*",
+                    "/dev/ttyUSB*",
+                ):
+                    candidates.extend(sorted(glob.glob(pattern)))
+
+                print(
+                    f"[HARDWARE] {self.drone_id}: Connection failed: device does not exist: {self.connection_string}"
+                )
+                if candidates:
+                    print(f"[HARDWARE] {self.drone_id}: Available serial candidates:")
+                    for c in candidates:
+                        print(f"[HARDWARE]   - {c}")
+                else:
+                    print(
+                        f"[HARDWARE] {self.drone_id}: No serial devices found under /dev/serial*, /dev/ttyAMA*, /dev/ttyACM*, /dev/ttyUSB*"
+                    )
+                return False
+
             self.vehicle = connect(self.connection_string, baud=self.baud, wait_ready=True, timeout=30)
             
             print(f"[HARDWARE] {self.drone_id}: Connected to Pixhawk")
