@@ -38,7 +38,7 @@ drone_control:
     connection_string: /dev/ttyAMA0
     heartbeat_interval_sec: 1
     timeout_sec: 30
-  mode: hardware
+  mode: demo
 drone_pool:
   drone_registry:
     FD-001:

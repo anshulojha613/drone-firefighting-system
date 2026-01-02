@@ -39,7 +39,7 @@ class ControllerFactory:
         elif mode == 'hardware':
             print(f"[FACTORY] Creating HARDWARE controller for {drone_id}")
             hardware_config = drone_control_config.get('hardware', {})
-            connection_string = hardware_config.get('connection_string', '/dev/ttyACM0')
+            connection_string = hardware_config.get('connection_string', '/dev/ttyAMA0')
             baud = hardware_config.get('baud', 57600)
             return PixhawkController(drone_id, connection_string, baud)
         
