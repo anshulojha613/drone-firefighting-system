@@ -10,8 +10,8 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
 from mission_control.orchestrator import MissionOrchestrator
-from scouter_drone.simulator import ScouterDroneSimulator
-from firefighter_drone.simulator import FirefighterDroneSimulator
+from scouter_drone.executor import ScouterDroneSimulator
+from firefighter_drone.executor import FirefighterDroneSimulator
 from utils.logger import get_logger, setup_logging
 
 logger = get_logger()

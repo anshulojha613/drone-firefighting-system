@@ -47,10 +47,10 @@ drone_firefighting_system/
 │   └── orchestrator.py       # Core mission logic
 ├── scouter_drone/
 │   ├── __init__.py
-│   └── simulator.py          # SD mission execution
+│   └── executor.py           # SD mission execution
 ├── firefighter_drone/
 │   ├── __init__.py
-│   └── simulator.py          # FD suppression missions
+│   └── executor.py           # FD suppression missions
 ├── drone_control/
 │   ├── __init__.py
 │   ├── controller_factory.py # Demo/Hardware abstraction
@@ -215,8 +215,8 @@ GPS Data      Thermal Scan      Still Images
 |-----------|--------|
 | Mission Control | Complete |
 | Database | Complete |
-| SD Simulator | Complete |
-| FD Simulator | Complete |
+| SD Executor | Complete |
+| FD Executor | Complete |
 | Camera Module | Complete |
 | Fire Detection ML | Complete |
 | Network Layer | Complete |

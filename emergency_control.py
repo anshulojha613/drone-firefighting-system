@@ -79,8 +79,8 @@ class EmergencyControl:
     def kill(self) -> bool:
         """KILL SWITCH - Immediate motor stop (DANGEROUS!)"""
         try:
-            print("\n[KILL] ⚠️  KILL SWITCH - MOTORS WILL STOP IMMEDIATELY!")
-            print("[KILL] ⚠️  DRONE WILL FALL IF AIRBORNE!")
+            print("\n[KILL] WARNING: KILL SWITCH - MOTORS WILL STOP IMMEDIATELY!")
+            print("[KILL] WARNING: DRONE WILL FALL IF AIRBORNE!")
             confirm = input("[KILL] Type 'KILL' to confirm: ")
             
             if confirm != "KILL":
@@ -103,7 +103,7 @@ class EmergencyControl:
 def interactive_mode(controller: EmergencyControl):
     """Interactive menu for emergency control"""
     print("\n" + "="*70)
-    print("  🚨 EMERGENCY CONTROL - DRONE OPERATIONS")
+    print("  EMERGENCY CONTROL - DRONE OPERATIONS")
     print("="*70)
     print(f"  Drone: {controller.drone_ip}:{controller.drone_port}")
     print("="*70)

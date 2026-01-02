@@ -1,6 +1,6 @@
 """
-Scouter Drone (SD) Simulator
-Generates field_testing_simulated compatible data with drone controller abstraction
+Scouter Drone (SD) Executor
+Executes missions using hardware sensors in HW mode or simulation in demo mode
 """
 import os
 import sys
@@ -11,8 +11,9 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Tuple
 import csv
 import math
+import time
 
-# Import data generation modules (now included in project)
+# Import data generation modules for simulation mode
 from field_testing_simulated.flight_path_calculator import FlightPathCalculator
 from field_testing_simulated.gps_generator import GPSGenerator
 from field_testing_simulated.thermal_generator import ThermalGenerator
@@ -21,6 +22,9 @@ from field_testing_simulated.environment_generator import EnvironmentGenerator
 # Import drone controller abstraction
 from drone_control import ControllerFactory
 
+# Import hardware sensors for HW mode
+from hardware_sensors import CameraSensor, ThermalSensor, EnvironmentSensor, GPSSensor
+
 # Import camera and fire detection modules
 from modules.camera_module import CameraModule
 from modules.fire_detector import FireDetector
@@ -28,15 +32,12 @@ from modules.fire_detector import FireDetector
 
 class ScouterDroneSimulator:
     """
-    Scouter drone simulator - generates realistic mission data
+    Scouter drone executor - runs missions with hardware or simulation
     
-    Simulates GPS, thermal, and environment data compatible with
-    field_testing_simulated module. Used this for 90% of development
-    since I couldn't fly the real drone every day.
+    In HW mode: Uses actual sensors (MLX90640, DHT22, Pixhawk GPS, rpicam)
+    In Demo mode: Uses simulation generators for testing
     
-    TODO: Add wind simulation (affects GPS accuracy)
-    TODO: Simulate battery drain based on flight distance
-    TODO: Add camera gimbal simulation for better thermal coverage
+    Automatically detects mode from drone controller configuration
     """
     def __init__(self, task_config: Dict, drone_id: str, output_base_dir: str = 'data', config_path: str = 'config/dfs_config.yaml', mode_override: str = None):
         self.task_config = task_config
@@ -91,14 +92,47 @@ class ScouterDroneSimulator:
         # Load main config for camera and fire detection settings
         self.main_config = self._load_main_config()
         
-        # Initialize camera module (for still picture capture)
-        self.camera = CameraModule(self.main_config, simulation_mode=True)
+        # Determine if we're in hardware or simulation mode
+        self.is_hardware_mode = self._is_hardware_mode()
+        
+        # Initialize sensors based on mode
+        if self.is_hardware_mode:
+            print("[HW] Initializing hardware sensors...")
+            self.hw_camera = CameraSensor(self.main_config, simulation_mode=False)
+            self.hw_thermal = ThermalSensor(self.main_config, simulation_mode=False)
+            self.hw_environment = EnvironmentSensor(self.main_config, simulation_mode=False, 
+                                                   pixhawk_connection=None)  # Will get from GPS sensor
+            self.hw_gps = GPSSensor(self.main_config, simulation_mode=False)
+            
+            # Share Pixhawk connection with environment sensor for barometric data
+            if hasattr(self.hw_gps, 'connection') and self.hw_gps.connection:
+                self.hw_environment.pixhawk_connection = self.hw_gps.connection
+            
+            # Still need camera module for compatibility
+            self.camera = CameraModule(self.main_config, simulation_mode=False)
+        else:
+            print("[DEMO] Initializing simulation mode...")
+            self.hw_camera = None
+            self.hw_thermal = None
+            self.hw_environment = None
+            self.hw_gps = None
+            self.camera = CameraModule(self.main_config, simulation_mode=True)
         
         # Initialize fire detector (for ML-based confirmation)
-        self.fire_detector = FireDetector(self.main_config, simulation_mode=True)
+        self.fire_detector = FireDetector(self.main_config, simulation_mode=not self.is_hardware_mode)
         
         # Validated hotspots (confirmed by ML)
         self.validated_hotspots = []
+    
+    def _is_hardware_mode(self) -> bool:
+        """Check if we're running in hardware mode"""
+        try:
+            with open(self.config_path, 'r') as f:
+                config = yaml.safe_load(f)
+            mode = config.get('drone_control', {}).get('mode', 'demo')
+            return mode == 'hardware'
+        except Exception:
+            return False
     
     def _load_main_config(self) -> Dict:
         """Load main DFS config for camera and fire detection settings"""
@@ -266,6 +300,7 @@ class ScouterDroneSimulator:
     def execute_mission(self) -> Tuple[int, str]:
         """Run scouting mission and generate data"""
         print(f"\n[DRONE] {self.drone_id} - Starting mission: {self.session_name}")
+        print(f"   Mode: {'HARDWARE' if self.is_hardware_mode else 'SIMULATION'}")
         
         try:
             # Connect to drone controller
@@ -285,44 +320,27 @@ class ScouterDroneSimulator:
             # Arm and takeoff
             altitude = self.task_config['cruise_altitude_m']
             if self.controller.arm():
-                import time
                 time.sleep(self.delay_sec)
                 self.controller.takeoff(altitude)
                 time.sleep(self.delay_sec)
             
-            # Generate GPS telemetry from waypoints
-            print("   Generating GPS telemetry...")
-            start_time = datetime.now()
-            gps_data = self.gps_gen.generate_telemetry(waypoints, start_time)
-            self._save_gps_data(gps_data)
+            # Execute mission based on mode
+            if self.is_hardware_mode:
+                gps_data, frame_count = self._execute_hardware_mission(waypoints)
+            else:
+                gps_data, frame_count = self._execute_simulation_mission(waypoints)
             
-            # Generate environment data
-            print("   Generating environment data...")
-            env_output_file = os.path.join(
-                self.session_dir, 'environment',
-                f"{self.session_name}_environment.csv"
-            )
-            self.env_gen.generate_environment_data(gps_data, env_output_file)
-            
-            # Generate thermal data
-            print("   Generating thermal data...")
-            thermal_output_dir = os.path.join(self.session_dir, 'thermal')
-            frame_count = self.thermal_gen.generate_thermal_data(
-                gps_data, 
-                thermal_output_dir, 
-                self.session_name
-            )
-            
-            # Capture still images during thermal scan (at regular intervals)
+            # Capture still images during mission
             print("   Capturing still images...")
             images_dir = os.path.join(self.session_dir, 'images')
             self._capture_still_images(gps_data, images_dir)
             
-            # Detect hotspots by loading saved thermal frames
+            # Detect hotspots from thermal data
             print("   Analyzing thermal data for hotspots...")
+            thermal_output_dir = os.path.join(self.session_dir, 'thermal')
             hotspots = self._detect_hotspots(thermal_output_dir, gps_data, frame_count)
             
-            # Validate hotspots with ML-based fire detection on still images
+            # Validate hotspots with ML-based fire detection
             print("   Validating hotspots with visual confirmation...")
             self._validate_hotspots_with_ml(hotspots, images_dir)
             
@@ -337,9 +355,95 @@ class ScouterDroneSimulator:
             return len(hotspots), self.session_dir
             
         finally:
+            # Cleanup sensors
+            if self.is_hardware_mode:
+                if self.hw_camera:
+                    self.hw_camera.cleanup()
+                if self.hw_thermal:
+                    self.hw_thermal.cleanup()
+                if self.hw_environment:
+                    self.hw_environment.cleanup()
+                if self.hw_gps:
+                    self.hw_gps.cleanup()
+            
             # Always disconnect controller
             if self.controller.is_connected():
                 self.controller.disconnect()
+    
+    def _execute_hardware_mission(self, waypoints: List) -> Tuple[pd.DataFrame, int]:
+        """Execute mission using actual hardware sensors"""
+        print("   [HW] Collecting data from hardware sensors...")
+        
+        gps_readings = []
+        thermal_frames = []
+        env_readings = []
+        
+        start_time = datetime.now()
+        frame_count = 0
+        
+        # Collect data at each waypoint
+        for i, waypoint in enumerate(waypoints):
+            # Read GPS from Pixhawk
+            gps_reading = self.hw_gps.read()
+            if gps_reading:
+                gps_readings.append(gps_reading)
+                self.hw_gps.log_reading(gps_reading, self.session_name)
+            
+            # Capture thermal frame
+            thermal_output_dir = os.path.join(self.session_dir, 'thermal')
+            thermal_info = self.hw_thermal.capture(thermal_output_dir, self.session_name)
+            if thermal_info:
+                thermal_frames.append(thermal_info)
+                frame_count += 1
+            
+            # Read environment data
+            env_reading = self.hw_environment.read()
+            if env_reading:
+                env_readings.append(env_reading)
+                self.hw_environment.log_reading(env_reading, self.session_name)
+            
+            # Small delay between readings
+            time.sleep(0.5)
+        
+        # Convert GPS readings to DataFrame
+        if gps_readings:
+            gps_data = pd.DataFrame(gps_readings)
+        else:
+            # Fallback to simulated data if no GPS
+            print("   [WARN] No GPS data collected, using simulated data")
+            gps_data = self.gps_gen.generate_telemetry(waypoints, start_time)
+        
+        self._save_gps_data(gps_data)
+        
+        print(f"   [HW] Collected {len(gps_readings)} GPS readings, {frame_count} thermal frames, {len(env_readings)} env readings")
+        
+        return gps_data, frame_count
+    
+    def _execute_simulation_mission(self, waypoints: List) -> Tuple[pd.DataFrame, int]:
+        """Execute mission using simulation generators"""
+        print("   [DEMO] Generating simulated sensor data...")
+        
+        # Generate GPS telemetry from waypoints
+        start_time = datetime.now()
+        gps_data = self.gps_gen.generate_telemetry(waypoints, start_time)
+        self._save_gps_data(gps_data)
+        
+        # Generate environment data
+        env_output_file = os.path.join(
+            self.session_dir, 'environment',
+            f"{self.session_name}_environment.csv"
+        )
+        self.env_gen.generate_environment_data(gps_data, env_output_file)
+        
+        # Generate thermal data
+        thermal_output_dir = os.path.join(self.session_dir, 'thermal')
+        frame_count = self.thermal_gen.generate_thermal_data(
+            gps_data, 
+            thermal_output_dir, 
+            self.session_name
+        )
+        
+        return gps_data, frame_count
     
     def _save_gps_data(self, gps_data: pd.DataFrame):
         """Save GPS data in field_testing_simulated format"""
@@ -522,3 +626,13 @@ class ScouterDroneSimulator:
         """Cleanup resources"""
         if hasattr(self, 'camera') and self.camera:
             self.camera.cleanup()
+        
+        if self.is_hardware_mode:
+            if self.hw_camera:
+                self.hw_camera.cleanup()
+            if self.hw_thermal:
+                self.hw_thermal.cleanup()
+            if self.hw_environment:
+                self.hw_environment.cleanup()
+            if self.hw_gps:
+                self.hw_gps.cleanup()

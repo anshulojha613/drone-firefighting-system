@@ -24,8 +24,8 @@ def test_imports():
     modules = [
         ("database", "DatabaseManager, Drone, Task, FireDetection"),
         ("mission_control.orchestrator", "MissionOrchestrator"),
-        ("scouter_drone.simulator", "ScouterDroneSimulator"),
-        ("firefighter_drone.simulator", "FirefighterDroneSimulator"),
+        ("scouter_drone.executor", "ScouterDroneSimulator"),
+        ("firefighter_drone.executor", "FirefighterDroneSimulator"),
         ("ml_training.fire_detector", "FireDetector"),
         ("network.communication", "NetworkCommunication"),
         ("dashboard.app", "DFSDashboard"),
@@ -135,8 +135,8 @@ def test_simulation():
         yaml.dump(config, f, default_flow_style=False)
     
     try:
-        from scouter_drone.simulator import ScouterDroneSimulator
-        from firefighter_drone.simulator import FirefighterDroneSimulator
+        from scouter_drone.executor import ScouterDroneSimulator
+        from firefighter_drone.executor import FirefighterDroneSimulator
         
         # Test SD
         task_config = {

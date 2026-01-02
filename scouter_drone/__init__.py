@@ -1,4 +1,4 @@
 """Scouter Drone Module"""
-from .simulator import ScouterDroneSimulator
+from .executor import ScouterDroneSimulator
 
 __all__ = ['ScouterDroneSimulator']

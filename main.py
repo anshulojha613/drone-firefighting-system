@@ -13,8 +13,8 @@ import time
 from datetime import datetime
 from database import DatabaseManager
 from mission_control.orchestrator import MissionOrchestrator
-from scouter_drone.simulator import ScouterDroneSimulator
-from firefighter_drone.simulator import FirefighterDroneSimulator
+from scouter_drone.executor import ScouterDroneSimulator
+from firefighter_drone.executor import FirefighterDroneSimulator
 from ml_training.fire_detector import FireDetector
 from network.communication import NetworkCommunication
 from network.ground_station_client import GroundStationClient
@@ -211,7 +211,7 @@ def run_demo_mission(orchestrator, fire_detector, config, mode_override=None, us
                 time.sleep(1)
         
         except KeyboardInterrupt:
-            print("\n\n[WARN] ⚠️  Mission abort requested by user")
+            print("\n\n[WARN] Mission abort requested by user")
             print("[ABORT] Sending abort command to drone...")
             
             try:

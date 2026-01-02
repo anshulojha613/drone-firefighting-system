@@ -17,7 +17,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from network.protocol import Message, MessageType, StatusReportMessage, TelemetryMessage
 from drone_control import ControllerFactory
-from scouter_drone.simulator import ScouterDroneSimulator
+from scouter_drone.executor import ScouterDroneSimulator
 
 
 class DroneAgent:
