@@ -24,22 +24,48 @@ python-socketio==5.10.0
 pyyaml==6.0.1
 python-dateutil==2.8.2
 
-# Drone Communication (Optional - for hardware mode)
+# Drone Communication (for hardware mode)
 pymavlink>=2.4.41
 dronekit>=2.9.2
 pyserial>=3.5
 future>=1.0.0  # Required for dronekit Python 3.13 compatibility
 
-# Machine Learning (optional - basic fire detection uses thermal thresholding)
-# tensorflow==2.15.0  # Uncomment if you need advanced ML models
+# Image Processing
 opencv-python>=4.8.0
 pillow>=10.0.0
+
+# ============================================
+# HARDWARE SENSORS (Raspberry Pi)
+# ============================================
+
+# Thermal Camera (MLX90640)
+adafruit-circuitpython-mlx90640>=1.3.0
+adafruit-blinka>=8.20.0
+adafruit-circuitpython-busdevice>=5.2.0
+Adafruit-PlatformDetect>=3.40.0
+
+# Environment Sensor (DHT22)
+adafruit-circuitpython-dht>=3.7.0
+
+# Note for Camera:
+# Raspberry Pi camera uses rpicam-still command-line tool (pre-installed on Raspberry Pi OS)
+# No additional Python packages needed for camera capture
+
+# Note for macOS:
+# Hardware sensors (thermal, DHT22) require GPIO access which is not available on Mac
+# The code will run in simulation mode on Mac for testing purposes
+
+# ============================================
+# OPTIONAL: Machine Learning
+# ============================================
+# Uncomment if using ML-based fire detection (basic fire detection uses thermal thresholding)
+# tensorflow==2.15.0
+# tflite-runtime>=2.14.0  # Lightweight alternative for Raspberry Pi
 
 # Geospatial
 folium==0.15.1
 
 # Utilities
-python-dateutil==2.8.2
 pytz==2023.3
 tzlocal==5.2
 
@@ -49,3 +75,6 @@ colorlog==6.8.0
 # Testing
 pytest==7.4.3
 pytest-cov==4.1.0
+
+# Data Visualization
+matplotlib>=3.5.0

@@ -5,17 +5,37 @@ Handles still image and video capture
 
 import time
 import os
+import subprocess
 from datetime import datetime
 from pathlib import Path
 
-try:
-    from picamera2 import Picamera2
-    from picamera2.encoders import H264Encoder
-    from picamera2.outputs import FileOutput
-    CAMERA_AVAILABLE = True
-except ImportError:
-    CAMERA_AVAILABLE = False
-    print("Warning: Camera libraries not available. Running in simulation mode.")
+# Check if rpicam tools are available (Raspberry Pi command-line tools)
+def check_rpicam_available():
+    try:
+        result = subprocess.run(['which', 'rpicam-still'], 
+                              capture_output=True, 
+                              text=True, 
+                              timeout=2)
+        return result.returncode == 0
+    except:
+        return False
+
+def check_rpicam_vid_available():
+    try:
+        result = subprocess.run(['which', 'rpicam-vid'], 
+                              capture_output=True, 
+                              text=True, 
+                              timeout=2)
+        return result.returncode == 0
+    except:
+        return False
+
+CAMERA_AVAILABLE = check_rpicam_available()
+VIDEO_AVAILABLE = check_rpicam_vid_available()
+if not CAMERA_AVAILABLE:
+    print("Warning: rpicam-still not available. Running in simulation mode.")
+if not VIDEO_AVAILABLE:
+    print("Warning: rpicam-vid not available. Video recording will be simulated.")
 
 
 class CameraModule:
@@ -24,40 +44,25 @@ class CameraModule:
     def __init__(self, config, simulation_mode=False):
         self.config = config
         self.simulation_mode = simulation_mode or not CAMERA_AVAILABLE
-        self.camera = None
         self.is_recording = False
         self.current_video_path = None
+        self.capture_count = 0
         
         if not self.simulation_mode:
             try:
-                self.camera = Picamera2()
-                
-                # Configure camera
-                camera_config = self.camera.create_still_config(
-                    main={"size": tuple(config['hardware']['camera']['resolution'])},
-                    buffer_count=2
-                )
-                self.camera.configure(camera_config)
-                
-                # Set rotation if needed
-                rotation = config['hardware']['camera'].get('rotation', 0)
-                if rotation:
-                    self.camera.set_controls({"Rotation": rotation})
-                
-                self.camera.start()
-                time.sleep(2)  # Allow camera to warm up
-                
-                print("[OK] Camera initialized OK")
+                # Test rpicam-still with a quick command
+                result = subprocess.run(['rpicam-still', '--version'], 
+                                      capture_output=True, 
+                                      text=True, 
+                                      timeout=5)
+                if result.returncode == 0:
+                    print("[OK] Camera initialized (rpicam-still)")
+                else:
+                    raise Exception("rpicam-still not responding")
             except Exception as e:
                 print(f"[FAIL] Failed to initialize camera: {e}")
                 print("  Falling back to simulation mode")
                 self.simulation_mode = True
-                if self.camera:
-                    try:
-                        self.camera.close()
-                    except:
-                        pass
-                    self.camera = None
         else:
             print("[OK] Camera running in simulation mode")
     
@@ -88,17 +93,39 @@ class CameraModule:
                 print(f"  [SIM] Still image captured: {filepath}")
                 return True
             else:
-                self.camera.capture_file(filepath)
-                print(f"  [OK] Still image captured: {filepath}")
-                return True
+                # Use rpicam-still command
+                resolution = self.config['hardware']['camera']['resolution']
+                rotation = self.config['hardware']['camera'].get('rotation', 0)
+                quality = self.config['hardware']['camera'].get('quality', 90)
+                
+                cmd = [
+                    'rpicam-still',
+                    '-o', filepath,
+                    '--width', str(resolution[0]),
+                    '--height', str(resolution[1]),
+                    '--rotation', str(rotation),
+                    '--quality', str(quality),
+                    '-n',  # No preview
+                    '-t', '1'  # 1ms timeout (immediate capture)
+                ]
+                
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                
+                if result.returncode == 0:
+                    self.capture_count += 1
+                    print(f"  [OK] Still image captured: {filepath}")
+                    return True
+                else:
+                    print(f"  [FAIL] rpicam-still error: {result.stderr}")
+                    return False
                 
         except Exception as e:
             print(f"  [FAIL] Error capturing still image: {e}")
             return False
     
-    def start_video_recording(self, filepath):
+    def start_video_recording(self, filepath, duration=10):
         """
-        Start video recording
+        Start video recording (uses rpicam-vid with duration)
         """
         if self.is_recording:
             print("  ! Video recording already in progress")
@@ -117,15 +144,26 @@ class CameraModule:
                 print(f"  [SIM] Video recording started: {filepath}")
                 return True
             else:
-                # Configure for video
-                video_config = self.camera.create_video_config(
-                    main={"size": tuple(self.config['hardware']['camera']['resolution'])},
-                )
-                self.camera.configure(video_config)
+                if not VIDEO_AVAILABLE:
+                    print("  [FAIL] rpicam-vid not available")
+                    return False
                 
-                encoder = H264Encoder(bitrate=10000000)
-                self.camera.start_recording(encoder, filepath)
+                # Use rpicam-vid command
+                resolution = self.config['hardware']['camera']['resolution']
+                rotation = self.config['hardware']['camera'].get('rotation', 0)
                 
+                cmd = [
+                    'rpicam-vid',
+                    '-o', filepath,
+                    '--width', str(resolution[0]),
+                    '--height', str(resolution[1]),
+                    '--rotation', str(rotation),
+                    '-n',  # No preview
+                    '-t', str(duration * 1000)  # Duration in milliseconds
+                ]
+                
+                # Run in background
+                self.video_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 self.current_video_path = filepath
                 self.is_recording = True
                 print(f"  [OK] Video recording started: {filepath}")
@@ -151,8 +189,10 @@ class CameraModule:
                     f.write(f"Video recording stopped at {datetime.now().isoformat()}\n")
                 print(f"  [SIM] Video recording stopped: {self.current_video_path}")
             else:
-                self.camera.stop_recording()
-                print(f"  [OK] Video recording stopped: {self.current_video_path}")
+                # Wait for rpicam-vid process to complete
+                if hasattr(self, 'video_process'):
+                    self.video_process.wait(timeout=30)
+                    print(f"  [OK] Video recording stopped: {self.current_video_path}")
             
             video_path = self.current_video_path
             self.current_video_path = None
@@ -192,7 +232,7 @@ class CameraModule:
                     'mode': 'hardware',
                     'resolution': self.config['hardware']['camera']['resolution'],
                     'status': 'active',
-                    'camera_properties': self.camera.camera_properties
+                    'tool': 'rpicam-still'
                 }
             except:
                 return {'mode': 'hardware', 'status': 'error'}
@@ -202,10 +242,12 @@ class CameraModule:
         if self.is_recording:
             self.stop_video_recording()
         
-        if self.camera and not self.simulation_mode:
+        if not self.simulation_mode:
             try:
-                self.camera.stop()
-                self.camera.close()
+                # Terminate any running video process
+                if hasattr(self, 'video_process') and self.video_process:
+                    self.video_process.terminate()
+                    self.video_process.wait(timeout=5)
                 print("[OK] Camera cleaned up")
             except Exception as e:
                 print(f"Error during camera cleanup: {e}")

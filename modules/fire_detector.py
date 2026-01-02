@@ -13,7 +13,7 @@ try:
     TF_AVAILABLE = True
 except ImportError:
     TF_AVAILABLE = False
-    print("Warning: TensorFlow not available. Fire detection will use basic methods.")
+    # Note: TensorFlow is optional. Basic fire detection uses thermal thresholding.
 
 
 class FireDetector:
