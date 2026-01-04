@@ -1,6 +1,11 @@
 # Drone Firefighting System - Dependencies
 # Compatible with Python 3.11+ (tested on 3.13)
 
+# For production deployment, use scenario-specific requirements:
+# - requirements/ground_station.txt (Mac/Linux)
+# - requirements/sd_drone.txt (Raspberry Pi - Scouter)
+# - requirements/fire_drone.txt (Raspberry Pi - Firefighter)
+
 # Database
 sqlalchemy>=2.0.35
 alembic>=1.13.1
