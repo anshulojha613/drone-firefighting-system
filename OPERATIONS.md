@@ -1,4 +1,4 @@
-# Operations Guide
+# Drone Firefighting System - Operations Guide
 
 ## Choose Your Path
 
@@ -14,9 +14,148 @@
 | Clean all records | `tests.py` | `python tests.py --clean` | A, B, C |
 | Run baseline tests | `run_baseline_tests.sh` | `./run_baseline_tests.sh` | A |
 | Fix DroneKit for Python 3.13 | `fix_dronekit_py313.py` | `python fix_dronekit_py313.py` | B, C |
+| Deploy to Raspberry Pi | `deploy_to_pi.sh` | `./deploy_to_pi.sh --drone-type sd` | B, C |
 | Start drone agent | `network/drone_agent.py` | `python network/drone_agent.py --drone-id SD-001` | C |
+| Emergency abort mission | `emergency_control.py` | `python emergency_control.py --ip 10.10.8.1 --abort` | C |
 
 **Modes:** A = Simulation, B = Hardware Testing (no flight), C = Production (actual flight)
+
+---
+
+## Quick Start
+
+### Installation
+
+#### Option 1: Ground Station (Mac/Linux)
+```bash
+cd drone_firefighting_system
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements/ground_station.txt
+
+# If you hit DroneKit issues on Python 3.13:
+python fix_dronekit_py313.py
+```
+
+#### Option 2: Scouter Drone (Raspberry Pi)
+```bash
+cd drone_firefighting_system
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements/sd_drone.txt
+```
+
+#### Option 3: Firefighter Drone (Raspberry Pi)
+```bash
+cd drone_firefighting_system
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements/fire_drone.txt
+```
+
+#### Option 4: Automated Deployment to Raspberry Pi
+```bash
+# Deploy Scouter Drone
+./deploy_to_pi.sh --drone-type sd
+
+# Deploy Firefighter Drone
+./deploy_to_pi.sh --drone-type fd
+
+# Deploy Ground Station
+./deploy_to_pi.sh --drone-type gs
+
+# Deploy with custom settings
+./deploy_to_pi.sh --drone-type sd --pi-host 10.10.8.2 --drone-id SD-002 --pi-user myuser
+
+# Show help
+./deploy_to_pi.sh --help
+```
+
+### Run Demo Mission (No Hardware Needed)
+```bash
+# Simulate a scouting mission
+python main.py --demo
+
+# Launch dashboard
+python main.py --dashboard
+# Open: http://localhost:8050
+```
+
+---
+
+## Component-Specific Requirements
+
+The system uses modular requirements files to minimize installation size and optimize performance for different components.
+
+### Requirements Files Overview
+
+| File | Platform | Size | Purpose |
+|------|----------|------|---------|
+| `requirements/ground_station.txt` | Mac/Linux | ~200MB | Dashboard, network client, visualization |
+| `requirements/sd_drone.txt` | Raspberry Pi | ~150MB | Thermal camera, fire detection, drone agent |
+| `requirements/fire_drone.txt` | Raspberry Pi | ~100MB | Flight control, water pump, drone agent |
+
+### Component Breakdown
+
+#### Ground Station
+**Includes:**
+- Web dashboard (Flask, Dash, Plotly)
+- Database (SQLAlchemy, Alembic)
+- Network client (requests, socketio)
+- Visualization (matplotlib, folium)
+- Testing framework (pytest)
+
+**Excludes:**
+- Drone hardware libraries
+- Camera/thermal sensors
+- TensorFlow/ML libraries
+
+#### Scouter Drone
+**Includes:**
+- Drone communication (pymavlink, dronekit)
+- Thermal camera (MLX90640 libraries)
+- Fire detection (OpenCV, Pillow)
+- Environment sensors (DHT22)
+- Drone agent (Flask, requests)
+
+**Excludes:**
+- Web dashboard
+- Visualization libraries
+- Testing framework
+- TensorFlow (optional)
+
+#### Firefighter Drone
+**Includes:**
+- Drone communication (pymavlink, dronekit)
+- Environment sensors (DHT22)
+- Drone agent (Flask, requests)
+- Basic data processing
+
+**Excludes:**
+- Web dashboard
+- Camera/thermal sensors
+- Image processing
+- Visualization libraries
+- TensorFlow/ML libraries
+
+### Migration from Single requirements.txt
+
+**Before:**
+```bash
+pip install -r requirements.txt  # ~300MB, all packages
+```
+
+**After:**
+```bash
+# Ground Station
+pip install -r requirements/ground_station.txt  # ~200MB
+
+# Scouter Drone  
+pip install -r requirements/sd_drone.txt        # ~150MB
+
+# Firefighter Drone
+pip install -r requirements/fire_drone.txt      # ~100MB
+```
 
 ---
 
@@ -77,7 +216,7 @@ ctrl.disconnect()
 Use this for real drone operations. **Requires proper safety setup.**
 
 ```bash
-# ON GROUND STATION (Laptop):
+# ON GROUND STATION (Mac/Linux):
 # 1. Start dashboard for monitoring
 python main.py --dashboard
 
@@ -90,7 +229,8 @@ python network/drone_agent.py --drone-id SD-001 --port 5001
 
 # ON GROUND STATION:
 # 4. Execute mission (will communicate with drone over WiFi)
-python main.py --demo
+python main.py --demo --network --drone-id SD-001
+
 # Or for multiple areas:
 python batch_mission.py
 ```
@@ -106,40 +246,153 @@ python batch_mission.py
 
 ---
 
-## Quick Start
+## Deployment to Raspberry Pi
 
-### Installation
+### Deployment Script Usage
+
+The `deploy_to_pi.sh` script automatically deploys the system to Raspberry Pi with component-specific requirements.
+
+#### Command-Line Options
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--drone-type TYPE` | Drone type: sd, fd, gs | `--drone-type sd` |
+| `--pi-user USER` | Raspberry Pi username | `--pi-user anshul` |
+| `--pi-host HOST` | Raspberry Pi IP address | `--pi-host 10.10.8.1` |
+| `--drone-id ID` | Drone ID | `--drone-id SD-001` |
+| `--help` | Show help message | `--help` |
+
+#### Deployment Examples
+
 ```bash
-cd drone_firefighting_system
-python3 -m venv venv
+# Deploy Scouter Drone (default settings)
+./deploy_to_pi.sh --drone-type sd
+
+# Deploy Firefighter Drone to different Pi
+./deploy_to_pi.sh --drone-type fd --pi-host 10.10.8.2
+
+# Deploy Ground Station
+./deploy_to_pi.sh --drone-type gs
+
+# Deploy with all custom settings
+./deploy_to_pi.sh \
+  --drone-type sd \
+  --pi-host 10.10.8.101 \
+  --pi-user myuser \
+  --drone-id SD-002
+```
+
+#### What the Deployment Script Does
+
+1. Tests connection to Raspberry Pi
+2. Creates project directory on Pi
+3. Syncs files (incremental, only changed files)
+4. Sets up Python virtual environment
+5. Installs component-specific requirements
+6. Provides systemd service setup instructions
+
+---
+
+## Network Mode Setup
+
+### Architecture Overview
+
+Network mode allows your ground station (Mac/Linux) to send missions over WiFi to the Raspberry Pi on the drone, which then controls the Pixhawk hardware.
+
+```
+Ground Station (Mac)  →  WiFi  →  Drone (Pi)  →  Serial  →  Pixhawk
+```
+
+### Step 1: Configure Drone IP Addresses
+
+Edit `config/dfs_config.yaml` and set the IP addresses for your drones:
+
+```yaml
+drone_pool:
+  drone_registry:
+    SD-001:
+      ip: 10.10.8.101  # Change to your drone's actual IP
+      port: 5001
+    SD-002:
+      ip: 10.10.8.102
+      port: 5001
+    FD-001:
+      ip: 10.10.8.103
+      port: 5001
+```
+
+### Step 2: Network Configuration
+
+Ensure both your ground station and Raspberry Pi are on the same WiFi network:
+
+| Parameter | Value |
+|-----------|-------|
+| Network SSID | FireDrone-GS |
+| Subnet | 10.10.8.0/24 |
+| Ground Station | 10.10.8.1 |
+| Drones | 10.10.8.101, 10.10.8.102, etc. |
+
+### Step 3: Start Drone Agent on Raspberry Pi
+
+```bash
+# SSH to Raspberry Pi
+ssh anshul@10.10.8.101
+
+# Navigate to project directory
+cd ~/drone-firefighting-system
+
+# Activate virtual environment
 source venv/bin/activate
-pip install -r requirements.txt
+
+# Ensure config has hardware mode enabled
+# Edit config/dfs_config.yaml:
+#   drone_control.mode: hardware
+#   drone_control.hardware.connection_string: /dev/ttyAMA0
+
+# Start the drone agent
+python -m network.drone_agent --drone-id SD-001 --port 5001
 ```
 
-### Run Demo Mission
+**What the drone agent does:**
+- Starts a Flask server on port 5001
+- Listens for mission commands from ground station
+- Controls the Pixhawk via `/dev/ttyAMA0`
+- Sends telemetry back to ground station
+
+### Step 4: Run Mission from Ground Station
+
 ```bash
-python main.py --demo
+# On your Mac/Linux ground station
+cd ~/Documents/coding/drone_firefighting_system
+source venv/bin/activate
+
+# Run in network mode
+python main.py --demo --network --drone-id SD-001
 ```
 
-### Launch Dashboard
-```bash
-python main.py --dashboard
-# Open: http://localhost:8050
-```
+### Network Mode Comparison
+
+| Mode | Command | Description |
+|------|---------|-------------|
+| Local Demo | `python main.py --demo` | Simulated flight on Mac (no hardware) |
+| Network Mode | `python main.py --demo --network` | Ground station → WiFi → Pi → Pixhawk |
+
+---
 
 ## Running Missions
 
-### Demo Mode (Simulation)
+### Single Demo Mission
+
 ```bash
-# Single demo mission
+# Simulation mode (no hardware)
 python main.py --demo
 
-# With dashboard
+# With dashboard monitoring
 python main.py --dashboard &
 python main.py --demo
 ```
 
-### Batch Missions: Sequential vs Parallel Execution
+### Batch Missions
 
 The system supports two execution modes for batch missions:
 
@@ -152,11 +405,14 @@ python batch_mission.py
 
 # Customize delay between missions
 python batch_mission.py --mode sequential --mission-delay 3
+
+# Use custom config file
+python batch_mission.py --config config/batch_mission_areas_sequential.yaml
 ```
 
 **Configuration:**
 ```yaml
-# config/dfs_config.yaml or mission_areas.yaml
+# config/batch_mission_areas_sequential.yaml
 execution:
   mode: sequential
   delay_between_missions_sec: 2
@@ -174,523 +430,598 @@ Multiple tasks are dispatched simultaneously with staggered delays, allowing mul
 # Run in parallel mode
 python batch_mission.py --mode parallel
 
-# Customize parallel execution
-python batch_mission.py --mode parallel --workers 5 --dispatch-delay 1.0
+# Customize workers and dispatch delay
+python batch_mission.py --mode parallel --workers 3 --dispatch-delay 0.5
+
+# Use custom config file
+python batch_mission.py --config config/batch_mission_areas_parallel.yaml
 ```
 
 **Configuration:**
 ```yaml
-# config/dfs_config.yaml
-mission_planning:
-  execution:
-    mode: parallel
-    parallel_max_workers: 3  # Max concurrent missions
-    task_dispatch_delay_sec: 0.5  # Delay between dispatches
+# config/batch_mission_areas_parallel.yaml
+execution:
+  mode: parallel
+  max_workers: 3
+  dispatch_delay_sec: 0.5
 ```
 
 **Use when:**
-- Have multiple idle drones available
+- Multiple drones available
 - Need faster area coverage
-- Simulating real-world multi-drone operations
+- Production operations
 
-**Parameters:**
-- `--mode`: Choose `sequential` or `parallel`
-- `--workers`: Max concurrent missions (parallel only)
-- `--dispatch-delay`: Seconds between task dispatches (parallel only)
-- `--mission-delay`: Seconds between missions (sequential only)
-- `--simulate-fires`: Inject simulated fire detections to trigger FD drone dispatch
+---
 
-#### Simulating Fire Detection
+## Dashboard Monitoring
 
-To see Firefighter (FD) drones in action during batch missions, use the `--simulate-fires` flag:
+### Starting the Dashboard
 
 ```bash
-# Sequential with simulated fires
-python batch_mission.py --simulate-fires
+# Start dashboard server
+python main.py --dashboard
 
-# Parallel with simulated fires
-python batch_mission.py --mode parallel --workers 3 --simulate-fires
+# Open in browser
+# http://localhost:8050
 ```
 
-This will:
-1. Execute SD (Scouter) missions normally
-2. Inject a simulated fire detection at the center of each mission area
-3. Auto-dispatch FD (Firefighter) drones to suppress the fires
-4. Show the complete fire detection → dispatch → suppression workflow
+### Dashboard Features
 
-### Custom Mission
-```python
-from mission_control.orchestrator import MissionOrchestrator
+| Feature | Description |
+|---------|-------------|
+| Real-time Map | Live drone positions and mission areas |
+| Drone Status | Battery, state, current task |
+| Fire Detections | Hotspot locations and confidence |
+| Telemetry | Altitude, speed, GPS data |
+| Mission History | Completed tasks and results |
 
-orchestrator = MissionOrchestrator()
+---
 
-flight_area = {
-    'corner_a': {'latitude': 33.2271, 'longitude': -96.8252},
-    'corner_b': {'latitude': 33.2272, 'longitude': -96.8279},
-    'corner_c': {'latitude': 33.2258, 'longitude': -96.8279},
-    'corner_d': {'latitude': 33.2257, 'longitude': -96.8252}
-}
+## Emergency Control
 
-task = orchestrator.create_scout_task(flight_area, priority='high')
-drone = orchestrator.assign_task_to_drone(task.task_id)
-```
+During mission execution, you have multiple ways to send emergency commands to your drone.
 
-## Testing
+### Safety Levels
 
-### Run All Tests
+| Command | Safety Level | Description |
+|---------|--------------|-------------|
+| ABORT | Safest | Stops mission, returns to launch |
+| RTL | Safe | Returns to home position |
+| LAND | Caution | Lands at current position |
+| KILL | DANGEROUS | Immediate motor stop (drone will fall) |
+
+### Method 1: Same Terminal (Ctrl+C)
+
+While mission is running, press **Ctrl+C** to abort:
+
 ```bash
+python main.py --demo --network --drone-id SD-001
+
+# Press Ctrl+C during execution
+^C
+[WARN] Mission abort requested by user
+[ABORT] Sending abort command to drone...
+[OK] Abort command sent - drone returning to launch
+```
+
+### Method 2: Separate Terminal (Full Control)
+
+#### Interactive Mode (Recommended)
+
+Open a **new terminal** while mission is running:
+
+```bash
+python emergency_control.py --ip 10.10.8.1
+```
+
+You'll see an interactive menu:
+
+```
+======================================================================
+  EMERGENCY CONTROL - DRONE OPERATIONS
+======================================================================
+  Drone: 10.10.8.1:5001
+======================================================================
+
+[OK] Connected to drone
+   State: EXECUTING
+   Mode: hardware
+   Task: TASK-20251226-0003
+
+----------------------------------------------------------------------
+Emergency Commands:
+  1. ABORT    - Abort mission and return to launch
+  2. RTL      - Return to launch (safe return home)
+  3. LAND     - Emergency land at current position
+  4. KILL     - Kill switch (immediate motor stop - DANGEROUS!)
+  5. STATUS   - Check drone status
+  6. EXIT     - Exit emergency control
+----------------------------------------------------------------------
+
+Enter command (1-6):
+```
+
+#### Quick Commands
+
+For immediate action without menu:
+
+```bash
+# Abort mission
+python emergency_control.py --ip 10.10.8.1 --abort
+
+# Return to launch
+python emergency_control.py --ip 10.10.8.1 --rtl
+
+# Emergency land
+python emergency_control.py --ip 10.10.8.1 --land
+
+# Check status
+python emergency_control.py --ip 10.10.8.1 --status
+
+# Kill switch (requires confirmation)
+python emergency_control.py --ip 10.10.8.1 --kill
+```
+
+### Complete Workflow Example
+
+#### Terminal 1: Start Mission
+```bash
+# On Mac (Ground Station)
+python main.py --demo --network --drone-id SD-001
+
+[COMM] Running in NETWORK mode (Ground Station -> WiFi -> Drone)
+[TARGET] Target drone: SD-001
+...
+[WAIT] Waiting for mission completion...
+[TIP] Press Ctrl+C to abort mission and RTL
+   Status: EXECUTING
+```
+
+#### Terminal 2: Emergency Control (if needed)
+```bash
+# Open new terminal on Mac
+python emergency_control.py --ip 10.10.8.1
+
+# Select option:
+# 1 - ABORT (safest)
+# 2 - RTL
+# 3 - LAND
+# 4 - KILL (dangerous!)
+```
+
+### API Endpoints for Emergency Control
+
+| Endpoint | Method | Action | Safety |
+|----------|--------|--------|--------|
+| `/api/mission/abort` | POST | Abort mission + RTL | Safe |
+| `/api/rtl` | POST | Return to launch | Safe |
+| `/api/land` | POST | Emergency land | Caution |
+| `/api/kill` | POST | Kill motors | Dangerous |
+| `/api/status` | GET | Get drone status | Info |
+
+### Manual API Calls with curl
+
+```bash
+# Abort mission
+curl -X POST http://10.10.8.1:5001/api/mission/abort
+
+# Return to launch
+curl -X POST http://10.10.8.1:5001/api/rtl
+
+# Emergency land
+curl -X POST http://10.10.8.1:5001/api/land
+
+# Check status
+curl http://10.10.8.1:5001/api/status
+
+# Kill switch
+curl -X POST http://10.10.8.1:5001/api/kill
+```
+
+---
+
+## Testing and Validation
+
+### System Tests
+
+```bash
+# Run all tests
 python tests.py
-```
 
-### Test Simulation Only
-```bash
+# Run simulation tests only
 python tests.py --simulation
-```
 
-## ML Fire Detection
-
-The system uses two fire detection modules:
-- **`ml_training/fire_detector.py`** - Thermal-based detection (SD drones)
-- **`modules/fire_detector.py`** - Visual/ML-based detection (confirmation)
-
-### Detection Pipeline
-1. Scouter drone captures thermal frames during flight
-2. Thermal detector identifies hotspots (>50C, min 3 pixels)
-3. Visual detector confirms fire using color analysis or ML model
-4. Only validated detections trigger firefighter dispatch
-
-### Test Fire Detection
-```bash
-# Test thermal detection
-python -c "
-import numpy as np
-from ml_training.fire_detector import FireDetector
-
-detector = FireDetector(hotspot_threshold_c=50.0, min_pixels=3)
-
-# Create test thermal frame with hotspot
-frame = np.random.uniform(20, 35, (24, 32))
-frame[10:15, 15:20] = 75  # Simulated fire
-
-gps = {'latitude': 33.227, 'longitude': -96.825, 'altitude': 15.0}
-is_fire, info = detector.detect_fire(frame, gps)
-
-print(f'Fire detected: {is_fire}')
-print(f'Max temp: {info.get(\"max_temperature_c\", 0):.1f}C')
-print(f'Confidence: {info.get(\"confidence\", 0):.2f}')
-"
-```
-
-### Test Visual Detection
-```bash
-# Test color-based fire detection on an image
-python -c "
-import yaml
-from modules.fire_detector import FireDetector
-
-with open('config/dfs_config.yaml') as f:
-    config = yaml.safe_load(f)
-
-detector = FireDetector(config, simulation_mode=True)
-
-# Test with a sample image (replace with actual path)
-# result = detector.detect_fire_in_image('path/to/image.jpg')
-print('Visual detector initialized')
-print(f'Mode: {\"simulation\" if detector.simulation_mode else \"ML model\"}')
-print(f'Confidence threshold: {detector.confidence_threshold}')
-"
-```
-
-### Configure Detection Thresholds
-Edit `config/dfs_config.yaml`:
-```yaml
-fire_detection:
-  thermal:
-    hotspot_threshold_c: 50.0    # Min temp to flag as hotspot
-    min_confidence: 0.7
-    min_hotspot_pixels: 3        # Min pixels above threshold
-  image_recognition:
-    confidence_threshold: 0.7    # Min confidence for ML detection
-    input_size: [224, 224]
-    model_path: null             # Path to TFLite model (optional)
-```
-
-### Using a Custom ML Model
-1. Train a fire detection model (binary classifier)
-2. Export to TensorFlow Lite format (.tflite)
-3. Update config:
-```yaml
-fire_detection:
-  image_recognition:
-    model_path: 'models/fire_detector.tflite'
-```
-4. Test the model:
-```bash
-python -c "
-import yaml
-from modules.fire_detector import FireDetector
-
-with open('config/dfs_config.yaml') as f:
-    config = yaml.safe_load(f)
-
-detector = FireDetector(config, simulation_mode=False)
-result = detector.detect_fire_in_image('test_image.jpg')
-print(f'Detection method: {result[\"method\"]}')
-print(f'Fire detected: {result[\"detected\"]}')
-"
-```
-
-### Pre-Production ML Checklist
-- [ ] Thermal threshold tuned for environment (default 50C)
-- [ ] Visual confidence threshold set appropriately (default 0.7)
-- [ ] Test with sample fire images to verify detection
-- [ ] Test with non-fire images to verify no false positives
-- [ ] If using ML model: model loaded successfully
-- [ ] Run full simulation to verify end-to-end detection
-
-## ML Model Training
-
-### Quick Start: Train Fire Detection Model
-```bash
-# 1. Setup dataset directory
-python ml_training/dataset_utils.py --setup
-
-# 2. Create sample dataset for testing (optional)
-python ml_training/train_fire_model.py --create-sample
-
-# 3. Train model
-python ml_training/train_fire_model.py --data-dir data/training_images --epochs 20
-
-# 4. Test model
-python ml_training/test_model.py --model models/fire_detector.tflite --fire-dir data/training_images/fire
-```
-
-### Dataset Preparation
-```bash
-# Show dataset sources
-python ml_training/dataset_utils.py --sources
-
-# Setup directory structure
-python ml_training/dataset_utils.py --setup --data-dir data/training_images
-
-# Import images
-python ml_training/dataset_utils.py --import-fire /path/to/fire/images
-python ml_training/dataset_utils.py --import-no-fire /path/to/normal/images
-
-# Augment dataset to 500 images per category
-python ml_training/dataset_utils.py --augment 500
-
-# Resize all images to 224x224
-python ml_training/dataset_utils.py --resize 224 224
-
-# Validate images
-python ml_training/dataset_utils.py --validate
-
-# Check stats
-python ml_training/dataset_utils.py --stats
-```
-
-Expected directory structure:
-```
-data/training_images/
-    fire/           # Images containing fire (min 100 recommended)
-        fire_001.jpg
-        fire_002.jpg
-    no_fire/        # Normal images without fire (min 100 recommended)
-        normal_001.jpg
-        normal_002.jpg
-```
-
-### Training Options
-```bash
-# Basic training (MobileNetV2 transfer learning)
-python ml_training/train_fire_model.py --data-dir data/training_images
-
-# Train with fine-tuning (better accuracy, longer training)
-python ml_training/train_fire_model.py --data-dir data/training_images --fine-tune
-
-# Train simple CNN (no transfer learning, faster)
-python ml_training/train_fire_model.py --data-dir data/training_images --no-transfer
-
-# Custom epochs and batch size
-python ml_training/train_fire_model.py --epochs 50 --batch-size 16
-```
-
-### Model Output
-Training produces three model files in `models/`:
-- `fire_detector.keras` - Full Keras model (for further training)
-- `fire_detector.tflite` - TFLite model (for deployment)
-- `fire_detector_quantized.tflite` - Quantized TFLite (smaller, faster on Pi)
-
-### Testing the Model
-```bash
-# Show model info and stats
-python ml_training/test_model.py --info
-
-# Test single image
-python ml_training/test_model.py --image test.jpg
-
-# Test directory of images
-python ml_training/test_model.py --dir test_images/
-
-# Test accuracy on labeled datasets
-python ml_training/test_model.py --fire-dir data/training_images/fire --no-fire-dir data/training_images/no_fire
-
-# Benchmark inference speed
-python ml_training/test_model.py --benchmark test.jpg --iterations 100
-
-# Combined: info + benchmark
-python ml_training/test_model.py --info --benchmark test.jpg
-```
-
-### Model Info Output
-```
-[INFO] MODEL DETAILS
-   Path: models/fire_detector.tflite
-   Type: TFLite
-   File Size: 9.08 MB
-   Input Size: 224x224
-   Input Shape: [1, 224, 224, 3]
-
-[FILES] Available models:
-   fire_detector.keras: 11.07 MB
-   fire_detector.tflite: 9.08 MB
-   fire_detector_quantized.tflite: 4.57 MB
-```
-
-### Deploy Model
-1. Copy model to drone:
-```bash
-scp models/fire_detector.tflite anshul@192.168.7.195:~/drone-firefighting-system/models/
-```
-
-2. Update config:
-```yaml
-# config/dfs_config.yaml
-fire_detection:
-  image_recognition:
-    model_path: 'models/fire_detector.tflite'
-```
-
-3. Test on drone:
-```bash
-python ml_training/test_model.py --model models/fire_detector.tflite --image test.jpg
-```
-
-### Training Tips
-- **Minimum dataset**: 100 images per category (more is better)
-- **Image sources**: Kaggle fire datasets, FLAME dataset, custom drone footage
-- **Augmentation**: Use `--augment` to expand small datasets
-- **Transfer learning**: Recommended for small datasets (<1000 images)
-- **Fine-tuning**: Enable with `--fine-tune` for better accuracy
-- **Quantized model**: Use `fire_detector_quantized.tflite` on Raspberry Pi for faster inference
-
-### Test Network Communication
-```bash
-# On drone (Raspberry Pi)
-python network/drone_agent.py --drone-id SD-001 --port 5001
-
-# On ground station
-python tests.py --network --drone-ip 10.10.8.100
-```
-
-### Test Hardware Connection
-```bash
-# Requires Pixhawk connected
+# Test hardware connection (no flight)
 python tests.py --hardware
+
+# Reset stuck drones
+python tests.py --reset
+
+# Clean all database records
+python tests.py --clean
 ```
 
-## Configuration
+### Baseline Tests
 
-Edit `config/dfs_config.yaml`:
-
-### Switch Between Demo/Hardware Mode
-```yaml
-drone_control:
-  mode: 'demo'      # or 'hardware'
-  hardware:
-    connection_string: '/dev/ttyAMA0'
-    baud: 57600
-```
-
-### Drone Pool Size
-```yaml
-drone_pool:
-  scouter_drones:
-    count: 5
-  firefighter_drones:
-    count: 3
-```
-
-### Fire Detection Thresholds
-```yaml
-fire_detection:
-  thermal:
-    hotspot_threshold_c: 50.0
-  image_recognition:
-    confidence_threshold: 0.7
-```
-
-## Database Operations
-
-### View Database
 ```bash
-sqlite3 database/dfs.db
-.tables
-SELECT * FROM drones;
-SELECT * FROM tasks ORDER BY created_at DESC LIMIT 5;
-SELECT * FROM fire_detections;
+# Run comprehensive baseline tests
+./run_baseline_tests.sh
 ```
 
-### Reset Database
-```bash
-rm database/dfs.db
-python main.py  # Reinitializes
-```
+### Testing Without Propellers
 
-### Reset Drone States
-```bash
-python -c "
-from database import DatabaseManager
-db = DatabaseManager()
-db.reset_all_drones_to_idle()
-print('All drones reset to IDLE')
-"
-```
+For safe bench testing:
 
-## Deployment to Raspberry Pi
+1. **Start mission normally:**
+   ```bash
+   python main.py --demo --network --drone-id SD-001
+   ```
 
-### Copy Files
-```bash
-scp -r drone_firefighting_system anshul@192.168.7.195:~/
-```
+2. **In separate terminal, test emergency commands:**
+   ```bash
+   # Test abort
+   python emergency_control.py --ip 10.10.8.1 --abort
+   
+   # Check if it worked
+   python emergency_control.py --ip 10.10.8.1 --status
+   ```
 
-### Or Use Deploy Script
-```bash
-./deploy_to_pi.sh
-```
+3. **Watch drone agent logs on Pi** to see commands received
 
-### Start Drone Agent on Pi
-```bash
-ssh anshul@192.168.7.195
-cd drone-firefighting-system
-source venv/bin/activate
-python network/drone_agent.py --drone-id SD-001 --port 5001
-```
-
-### Auto-Start on Boot
-```bash
-# On Raspberry Pi
-sudo systemctl enable drone-agent
-sudo systemctl start drone-agent
-```
-
-## Hardware Mode (Pixhawk)
-
-### Prerequisites
-```bash
-pip install dronekit pymavlink
-python fix_dronekit_py313.py  # Patch for Python 3.13
-```
-
-### Test Pixhawk Connection
-```bash
-python -c "
-from drone_control import ControllerFactory
-ctrl = ControllerFactory.create_controller('SD-001')
-ctrl.connect()
-print(f'Battery: {ctrl.get_battery()}%')
-ctrl.disconnect()
-"
-```
-
-### Switch to Hardware Mode
-Edit `config/dfs_config.yaml`:
-```yaml
-drone_control:
-  mode: 'hardware'
-```
+---
 
 ## Troubleshooting
 
-### Module Not Found
-```bash
-# Ensure virtual environment is active
-source venv/bin/activate
+### Connection Issues
+
+#### "Cannot connect to SD-001 at 10.10.8.101:5001"
+
+**Cause:** Drone agent not running or network issue
+
+**Solutions:**
+1. Check drone agent is running on Pi:
+   ```bash
+   ssh anshul@10.10.8.101
+   ps aux | grep drone_agent
+   ```
+
+2. Test network connectivity:
+   ```bash
+   ping 10.10.8.101
+   curl http://10.10.8.101:5001/api/status
+   ```
+
+3. Check firewall on Pi:
+   ```bash
+   sudo ufw status
+   sudo ufw allow 5001/tcp
+   ```
+
+#### "Drone SD-001 not found in drone_registry config"
+
+**Cause:** Drone not registered in config file
+
+**Solution:** Add drone to `config/dfs_config.yaml`:
+```yaml
+drone_pool:
+  drone_registry:
+    SD-001:
+      ip: 10.10.8.101
+      port: 5001
 ```
 
-### Database Locked
-```bash
-# Kill any running processes
-pkill -f "main.py"
-rm database/dfs.db
-```
+### Hardware Issues
 
-### Network Connection Failed
-```bash
-# Check drone agent is running
-ping 10.10.8.100
-curl http://10.10.8.100:5001/api/status
-```
+#### "Connection failed: device does not exist: /dev/ttyAMA0"
 
-### DroneKit Import Error (Python 3.13)
+**Cause:** Running in hardware mode but Pixhawk not connected
+
+**Solutions:**
+1. Check Pixhawk is connected to Pi:
+   ```bash
+   ls -la /dev/ttyAMA* /dev/ttyACM* /dev/ttyUSB*
+   ```
+
+2. Update connection string in config if device is different:
+   ```yaml
+   drone_control:
+     hardware:
+       connection_string: /dev/ttyACM0  # or /dev/serial0
+   ```
+
+3. Enable UART on Raspberry Pi:
+   ```bash
+   sudo raspi-config
+   # Interface Options -> Serial Port
+   # Login shell: No
+   # Serial hardware: Yes
+   sudo reboot
+   ```
+
+#### "collections.MutableMapping" Error (DroneKit)
+
+**Cause:** DroneKit incompatibility with Python 3.13
+
+**Solution:**
 ```bash
 python fix_dronekit_py313.py
 ```
 
-### No Drones Available
+#### Thermal Camera Not Detected
+
+**Cause:** I2C not enabled or camera not connected
+
+**Solution:**
 ```bash
-sqlite3 database/dfs.db "UPDATE drones SET state='idle';"
+# Enable I2C
+sudo raspi-config nonint do_i2c 0
+sudo reboot
+
+# Check detection
+sudo i2cdetect -y 1
+# Should see 0x33 for MLX90640
 ```
 
-## Data Output
+#### WiFi Access Point Won't Start
 
-### Mission Data Location
-```
-data/
-└── SD-001_20251223_120000/
-    ├── gps/
-    │   └── SD-001_20251223_120000_gps.csv
-    ├── thermal/
-    │   ├── frame_0001.npy
-    │   └── frame_0001.csv
-    ├── environment/
-    │   └── SD-001_20251223_120000_environment.csv
-    ├── images/
-    │   ├── img_0000.jpg
-    │   └── img_0000_metadata.json
-    └── logs/
-        └── suppression_log.json
-```
+**Cause:** Interface not up or hostapd not running
 
-### Clean Test Output
+**Solution:**
 ```bash
-rm -rf data/test_output/*
+# Check interface state
+ip link show wlan1
+
+# Bring up manually
+sudo ip link set wlan1 up
+sudo systemctl restart hostapd
 ```
 
-## System Status Check
+### Mission Issues
 
-```python
-from mission_control.orchestrator import MissionOrchestrator
+#### "Abort command failed"
 
-orchestrator = MissionOrchestrator()
-status = orchestrator.get_system_status()
+**Possible causes:**
+- Drone may have already completed mission
+- Network communication issue
+- Drone agent not responding
 
-print(f"Total Drones: {status['drones']['total']}")
-print(f"Idle Drones: {status['drones']['idle']}")
-print(f"Active Tasks: {status['tasks']['executing']}")
-print(f"Fire Detections: {status['detections']['total']}")
+**Solutions:**
+1. Check status first: `python emergency_control.py --ip 10.10.8.1 --status`
+2. Try RTL or LAND instead
+3. Check drone agent logs on Pi
+4. Manually SSH to Pi and check process
+
+#### Mission keeps running after abort
+
+**Solutions:**
+1. Check drone agent logs on Pi
+2. Manually SSH to Pi and check process
+3. Use kill switch as last resort (only if safe)
+
+---
+
+## Configuration Files
+
+### Main Configuration (dfs_config.yaml)
+
+```yaml
+# Drone control mode
+drone_control:
+  mode: demo  # Options: demo, hardware
+  hardware:
+    connection_string: /dev/ttyAMA0
+    baud: 57600
+
+# Drone registry for network mode
+drone_pool:
+  drone_registry:
+    SD-001:
+      ip: 10.10.8.101
+      port: 5001
+    FD-001:
+      ip: 10.10.8.102
+      port: 5001
+
+# Network configuration
+network:
+  primary:
+    ssid: FireDrone-GS
+    ip: 10.10.8.1
+    subnet: 255.255.255.0
 ```
 
-## Logs
+### Mission Areas (mission_areas.yaml)
 
-### View System Logs
+```yaml
+areas:
+  area_1:
+    name: "North Field"
+    bounds:
+      north: 33.2365
+      south: 33.2355
+      east: -96.8255
+      west: -96.8275
+    altitude: 50
+    mission_type: scout
+```
+
+---
+
+## Safety Recommendations
+
+### Pre-Flight Checklist
+
+- [ ] Always test without propellers first
+- [ ] Keep emergency control terminal ready
+- [ ] Verify battery level > 80%
+- [ ] Confirm GPS lock acquired
+- [ ] Check WiFi network connectivity
+- [ ] Have RC transmitter ready for manual override
+- [ ] Ensure clear flight area
+- [ ] Have observer present
+
+### Emergency Abort Options (in order)
+
+1. **First try:** Ctrl+C in mission terminal
+2. **Second try:** ABORT from emergency control
+3. **Third try:** RTL or LAND
+4. **Last resort:** KILL (only if necessary)
+
+### Monitoring During Operations
+
+1. Monitor drone agent logs on Pi during testing
+2. Have physical access to Pi for manual shutdown
+3. Keep dashboard open for real-time monitoring
+4. Have emergency control script ready in separate terminal
+
+---
+
+## Advanced Operations
+
+### Systemd Service Setup (Auto-Start on Boot)
+
+After deploying to Raspberry Pi, you can set up the drone agent to start automatically:
+
 ```bash
-tail -f logs/dfs.log
+# SSH to Raspberry Pi
+ssh anshul@10.10.8.1
+
+# Create systemd service file
+sudo tee /etc/systemd/system/drone-agent.service > /dev/null << 'EOF'
+[Unit]
+Description=Drone Agent for Firefighting System
+After=network.target
+
+[Service]
+Type=simple
+User=anshul
+WorkingDirectory=/home/anshul/drone-firefighting-system
+ExecStart=/home/anshul/drone-firefighting-system/venv/bin/python network/drone_agent.py --drone-id SD-001 --port 5001
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Enable and start service
+sudo systemctl daemon-reload
+sudo systemctl enable drone-agent
+sudo systemctl start drone-agent
+
+# Check status
+sudo systemctl status drone-agent
+
+# View logs
+sudo journalctl -u drone-agent -f
 ```
 
-### View Drone Agent Logs
+### Testing Network Connection
+
+Test connection to a drone programmatically:
+
 ```bash
-# On Raspberry Pi
-journalctl -u drone-agent -f
+python -c "
+from network.ground_station_client import GroundStationClient
+import yaml
+
+with open('config/dfs_config.yaml') as f:
+    config = yaml.safe_load(f)
+
+client = GroundStationClient(config)
+client.register_drone('SD-001', '10.10.8.101', 5001)
+client.test_connection('SD-001')
+"
 ```
+
+### Battery Life Optimization
+
+| Tip | Impact |
+|-----|--------|
+| Keep batteries warm before flight | +2-3 min |
+| Set voltage alarm to 3.8V/cell | Safer landing |
+| Reduce camera streaming resolution | +1 min |
+| Fly at optimal altitude (50 ft) | Better efficiency |
+| Plan missions for 8-10 min max | Safety margin |
+
+**Battery Life Reality:**
+- Advertised: 15-20 minutes
+- Actual (70°F): 15 minutes
+- Actual (40°F): 10 minutes
+- With camera/WiFi: Subtract 1 minute
+
+---
+
+## Data Management
+
+### Data Output Locations
+
+| Data Type | Location | Format |
+|-----------|----------|--------|
+| GPS Logs | `data/gps/` | CSV |
+| Thermal Frames | `data/thermal/` | NPY + JSON |
+| Still Images | `data/images/` | JPG |
+| Environment Data | `data/environment/` | CSV |
+| Mission Reports | `data/reports/` | JSON |
+| System Logs | `logs/` | TXT |
+
+### Data Format Examples
+
+**GPS Log (CSV):**
+```csv
+timestamp,latitude,longitude,altitude,heading,satellites,fix_type,mode
+1703097234.5,33.2365,-96.8265,50.2,90,12,3,AUTO
+```
+
+**Environment Data (CSV):**
+```csv
+timestamp,temperature,humidity,pressure,baro_altitude,baro_temperature,mode,note
+1703097234.5,8.5,65,1013.25,0,9.2,AUTO,scouting
+```
+
+---
+
+## Next Steps
+
+### For Development
+1. Install ground station requirements
+2. Run demo mission to verify setup
+3. Launch dashboard for monitoring
+4. Test batch missions
+
+### For Hardware Testing
+1. Deploy to Raspberry Pi using deployment script
+2. Connect Pixhawk and verify connection
+3. Test hardware mode without propellers
+4. Verify emergency control commands
+
+### For Production Operations
+1. Complete pre-flight checklist
+2. Start drone agent on Raspberry Pi
+3. Configure drone registry in config
+4. Test network connectivity
+5. Run mission from ground station
+6. Monitor via dashboard
+7. Keep emergency control ready
+
+---
+
+## Support and Documentation
+
+### Additional Resources
+
+| Resource | Location |
+|----------|----------|
+| Architecture Details | `ARCHITECTURE.md` |
+| Requirements Documentation | `requirements/README.md` |
+| Field Testing Guide | `FIELD_TEST.md` |
+| Logging Guide | `LOGGING.md` |
+
+### Getting Help
+
+For issues or questions:
+1. Check troubleshooting section above
+2. Review system logs in `logs/` directory
+3. Check drone agent logs on Raspberry Pi
+4. Verify configuration files
+5. Test network connectivity

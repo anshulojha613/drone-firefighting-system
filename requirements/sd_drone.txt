@@ -1,0 +1,82 @@
+# Scouter Drone (SD) Requirements
+# For Raspberry Pi - runs drone agent, thermal camera, and fire detection
+# Compatible with Python 3.11+ (tested on 3.13)
+
+# ============================================
+# CORE SYSTEM
+# ============================================
+
+# Database (minimal)
+sqlalchemy>=2.0.35
+
+# Configuration
+pyyaml==6.0.1
+python-dateutil>=2.8.2
+
+# Data Processing
+pandas>=2.2.0
+numpy>=1.26.0
+
+# Utilities
+pytz==2023.3
+
+# Logging
+colorlog==6.8.0
+
+# ============================================
+# DRONE COMMUNICATION & CONTROL
+# ============================================
+
+# Drone Communication (for hardware mode)
+pymavlink>=2.4.41
+dronekit>=2.9.2
+pyserial>=3.5
+future>=1.0.0  # Required for dronekit Python 3.13 compatibility
+
+# ============================================
+# NETWORKING (DRONE AGENT)
+# ============================================
+
+# Networking (lightweight)
+requests==2.31.0
+
+# ============================================
+# IMAGE PROCESSING & FIRE DETECTION
+# ============================================
+
+# Image Processing (lightweight)
+opencv-python>=4.8.0
+pillow>=10.0.0
+
+# ============================================
+# HARDWARE SENSORS (Raspberry Pi)
+# ============================================
+
+# Thermal Camera (MLX90640)
+adafruit-circuitpython-mlx90640>=1.3.0
+adafruit-blinka>=8.20.0
+adafruit-circuitpython-busdevice>=5.2.0
+Adafruit-PlatformDetect>=3.40.0
+
+# Environment Sensor (DHT22)
+adafruit-circuitpython-dht>=3.7.0
+
+# Note for Camera:
+# Raspberry Pi camera uses rpicam-still command-line tool (pre-installed on Raspberry Pi OS)
+# No additional Python packages needed for camera capture
+
+# ============================================
+# OPTIONAL: Machine Learning
+# ============================================
+# Uncomment if using ML-based fire detection (basic fire detection uses thermal thresholding)
+# tensorflow==2.15.0
+# tflite-runtime>=2.14.0  # Lightweight alternative for Raspberry Pi
+
+# ============================================
+# NOTES
+# ============================================
+# - No web framework (runs drone agent only)
+# - No dashboard (ground station handles dashboard)
+# - Camera uses rpicam-still CLI tool (no Python library needed)
+# - Basic fire detection uses thermal thresholding (no TensorFlow required)
+# - Minimal dependencies for Raspberry Pi performance

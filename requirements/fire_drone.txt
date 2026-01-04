@@ -1,0 +1,61 @@
+# Firefighter Drone (FD) Requirements
+# For Raspberry Pi - runs drone agent, water pump control, and basic navigation
+# Compatible with Python 3.11+ (tested on 3.13)
+
+# ============================================
+# CORE SYSTEM
+# ============================================
+
+# Database (minimal)
+sqlalchemy>=2.0.35
+
+# Configuration
+pyyaml==6.0.1
+python-dateutil>=2.8.2
+
+# Data Processing (minimal)
+numpy>=1.26.0
+
+# Utilities
+pytz==2023.3
+
+# Logging
+colorlog==6.8.0
+
+# ============================================
+# DRONE COMMUNICATION & CONTROL
+# ============================================
+
+# Drone Communication (for hardware mode)
+pymavlink>=2.4.41
+dronekit>=2.9.2
+pyserial>=3.5
+future>=1.0.0  # Required for dronekit Python 3.13 compatibility
+
+# ============================================
+# NETWORKING (DRONE AGENT)
+# ============================================
+
+# Networking (lightweight)
+requests==2.31.0
+
+# ============================================
+# HARDWARE SENSORS (Raspberry Pi)
+# ============================================
+
+# Environment Sensor (DHT22) - for monitoring conditions
+adafruit-circuitpython-dht>=3.7.0
+adafruit-blinka>=8.20.0
+adafruit-circuitpython-busdevice>=5.2.0
+Adafruit-PlatformDetect>=3.40.0
+
+# ============================================
+# NOTES
+# ============================================
+# - No web framework (runs drone agent only)
+# - No dashboard (ground station handles dashboard)
+# - No camera/thermal sensors (scouter drone handles fire detection)
+# - No image processing (firefighter drone focuses on water delivery)
+# - No TensorFlow (no ML processing needed)
+# - Minimal dependencies for Raspberry Pi performance
+# - Focus on flight control and water pump operation

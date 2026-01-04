@@ -1,0 +1,67 @@
+# Ground Station Requirements
+# For Mac/Linux ground station - runs dashboard, network client, and mission control
+# Compatible with Python 3.11+ (tested on 3.13)
+
+# ============================================
+# CORE SYSTEM
+# ============================================
+
+# Database
+sqlalchemy>=2.0.35
+alembic>=1.13.1
+
+# Configuration
+pyyaml==6.0.1
+python-dateutil>=2.8.2
+
+# Data Processing
+pandas>=2.2.0
+numpy>=1.26.0
+
+# Utilities
+pytz==2023.3
+tzlocal==5.2
+
+# Logging
+colorlog==6.8.0
+
+# ============================================
+# WEB FRAMEWORK & DASHBOARD
+# ============================================
+
+# Web Framework & Dashboard
+flask==3.0.0
+flask-socketio==5.3.5
+dash==2.14.2
+dash-bootstrap-components==1.5.0
+plotly==5.18.0
+
+# Geospatial mapping
+folium==0.15.1
+
+# Data Visualization
+matplotlib>=3.5.0
+
+# ============================================
+# NETWORKING
+# ============================================
+
+# Networking
+requests==2.31.0
+python-socketio==5.10.0
+
+# ============================================
+# TESTING & DEVELOPMENT
+# ============================================
+
+# Testing (optional for development)
+pytest==7.4.3
+pytest-cov==4.1.0
+
+# ============================================
+# NOTES
+# ============================================
+# - No drone hardware libraries needed (runs on ground station)
+# - No camera/thermal sensor libraries (hardware runs on drones)
+# - No TensorFlow (basic fire detection runs on drones)
+# - Dashboard and network communication only
