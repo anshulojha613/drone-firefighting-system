@@ -1,9 +1,12 @@
 # Fire Fighting Drone System
 
 **Author:** Anshul Ojha  
-**Email:** anshulojha2018@gmail.com
-****Website:** wwww.anshulojha.com
-****Project Media:** https://www.anshulojha.com/dp
+**Email:** anshulojha2018@gmail.com  
+**Website:** www.anshulojha.com  
+**Project:** https://www.anshulojha.com/dp  
+
+**Project Short Video:** https://youtu.be/9RFP4sJX1Sg  
+
 
 **December 2025**
 
